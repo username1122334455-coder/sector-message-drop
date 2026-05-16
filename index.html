@@ -10,6 +10,7 @@
         --text: #f4f7f2;
         --accent: #7dff6b;
         --danger: #ff7373;
+        --muted: #9aa79a;
         font-family: "Trebuchet MS", "Arial Black", Arial, sans-serif;
       }
 
@@ -87,7 +88,12 @@
         font-weight: 900;
       }
 
-      button:hover {
+      button:disabled {
+        cursor: wait;
+        opacity: 0.72;
+      }
+
+      button:hover:not(:disabled) {
         filter: brightness(1.06);
       }
 
@@ -107,6 +113,10 @@
 
       .feedback.is-error {
         color: var(--danger);
+      }
+
+      .feedback.is-muted {
+        color: var(--muted);
       }
 
       @media (max-width: 520px) {
@@ -137,18 +147,44 @@
         placeholder="MESSAGE"
         required
       />
-      <button type="submit">Send</button>
+      <button id="sendButton" type="submit">Send</button>
     </form>
     <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+      const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
+
       const form = document.querySelector("#messageForm");
       const input = document.querySelector("#messageInput");
+      const sendButton = document.querySelector("#sendButton");
       const feedback = document.querySelector("#feedback");
-      const storageKey = "sector-message-drop";
+      const clientIdKey = "sector-message-drop-client-id";
 
-      const getMessages = () => JSON.parse(localStorage.getItem(storageKey) || "[]");
-      const saveMessages = (messages) => localStorage.setItem(storageKey, JSON.stringify(messages));
+      const isConfigured =
+        SUPABASE_URL.startsWith("https://") &&
+        SUPABASE_PUBLISHABLE_KEY !== "PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE";
+
+      const client = isConfigured
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+        : null;
+
+      const setFeedback = (message, type = "") => {
+        feedback.textContent = message;
+        feedback.className = type ? `feedback ${type}` : "feedback";
+      };
+
+      const getClientId = () => {
+        let clientId = localStorage.getItem(clientIdKey);
+
+        if (!clientId) {
+          clientId = crypto.randomUUID();
+          localStorage.setItem(clientIdKey, clientId);
+        }
+
+        return clientId;
+      };
 
       const validate = (value) => {
         if (!value) return "Enter a message.";
@@ -159,30 +195,49 @@
 
       input.addEventListener("input", () => {
         input.value = input.value.replace(/\s/g, "").slice(0, 15);
-        feedback.textContent = "";
-        feedback.className = "feedback";
+        setFeedback("");
       });
 
-      form.addEventListener("submit", (event) => {
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
+
         const value = input.value.trim();
         const issue = validate(value);
 
         if (issue) {
-          feedback.textContent = issue;
-          feedback.className = "feedback is-error";
+          setFeedback(issue, "is-error");
           return;
         }
 
-        const messages = getMessages();
-        messages.unshift({
-          text: value,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        });
-        saveMessages(messages.slice(0, 20));
-        input.value = "";
-        feedback.textContent = "Request received.";
-        feedback.className = "feedback";
+        if (!client) {
+          setFeedback("Supabase is not configured.", "is-error");
+          return;
+        }
+
+        sendButton.disabled = true;
+        setFeedback("Sending...", "is-muted");
+
+        try {
+          const { data, error } = await client.rpc("submit_drop", {
+            p_message: value,
+            p_client_id: getClientId(),
+          });
+
+          if (error) {
+            setFeedback("Drop failed. Try again.", "is-error");
+            return;
+          }
+
+          if (!data?.ok) {
+            setFeedback(data?.message || "Hourly limit reached.", "is-error");
+            return;
+          }
+
+          input.value = "";
+          setFeedback(`Drop received. ${data.remaining} left this hour.`);
+        } finally {
+          sendButton.disabled = false;
+        }
       });
     </script>
   </body>
