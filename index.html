@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sector Message Drop</title>
+    <style>
+      :root {
+        --bg: #030303;
+        --panel: #0c0f0d;
+        --panel-2: #101612;
+        --line: #27352b;
+        --text: #f4f7f2;
+        --muted: #9aa79a;
+        --accent: #7dff6b;
+        --accent-2: #f3e85b;
+        --danger: #ff7373;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+        font-family: "Trebuchet MS", "Arial Black", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--text);
+        background-color: var(--bg);
+        background-image: radial-gradient(rgba(255, 255, 255, 0.38) 1px, transparent 1px);
+        background-size: 18px 18px;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        content: "";
+        background:
+          linear-gradient(140deg, rgba(125, 255, 107, 0.1), transparent 32%),
+          linear-gradient(320deg, rgba(243, 232, 91, 0.08), transparent 34%),
+          rgba(0, 0, 0, 0.68);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .shell {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 28px 16px;
+      }
+
+      .app {
+        width: min(100%, 920px);
+        overflow: hidden;
+        border: 1px solid rgba(125, 255, 107, 0.24);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(16, 22, 18, 0.96), rgba(5, 6, 5, 0.98));
+        box-shadow: var(--shadow);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px clamp(16px, 4vw, 28px);
+        border-bottom: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.28);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .badge {
+        display: grid;
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border: 2px solid var(--accent);
+        border-radius: 50%;
+        color: var(--accent);
+        font-family: "Arial Black", Impact, sans-serif;
+        font-size: 15px;
+        line-height: 1;
+      }
+
+      .brand h1 {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-family: "Arial Black", Impact, sans-serif;
+        font-size: clamp(1.3rem, 4vw, 2.25rem);
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .status {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        border: 1px solid rgba(243, 232, 91, 0.5);
+        border-radius: 999px;
+        color: var(--accent-2);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+        gap: 0;
+      }
+
+      .hero,
+      .inbox {
+        padding: clamp(22px, 5vw, 44px);
+      }
+
+      .hero {
+        border-right: 1px solid var(--line);
+      }
+
+      .kicker {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: 0.82rem;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        max-width: 11ch;
+        margin: 0;
+        font-family: "Arial Black", Impact, sans-serif;
+        font-size: clamp(2.25rem, 8vw, 5rem);
+        line-height: 0.9;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .subcopy {
+        max-width: 44ch;
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .rules {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 24px;
+      }
+
+      .rule {
+        padding: 8px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #dce5d9;
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .panel-title h3 {
+        margin: 0;
+        font-family: "Arial Black", Impact, sans-serif;
+        font-size: 1.1rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .counter {
+        color: var(--accent-2);
+        font-size: 0.86rem;
+        font-weight: 900;
+      }
+
+      form {
+        display: grid;
+        gap: 12px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .input-row {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      input {
+        width: 100%;
+        min-width: 0;
+        height: 52px;
+        border: 1px solid rgba(125, 255, 107, 0.36);
+        border-radius: 8px;
+        outline: none;
+        padding: 0 14px;
+        background: #050705;
+        color: var(--text);
+        font-family: "Arial Black", Impact, sans-serif;
+        font-size: 1.1rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(125, 255, 107, 0.12);
+      }
+
+      button {
+        min-width: 116px;
+        height: 52px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #071007;
+        cursor: pointer;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      button:hover {
+        filter: brightness(1.06);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .hint,
+      .feedback {
+        min-height: 20px;
+        margin: 0;
+        font-size: 0.86rem;
+        line-height: 1.4;
+      }
+
+      .hint {
+        color: var(--muted);
+      }
+
+      .feedback.is-error {
+        color: var(--danger);
+        font-weight: 800;
+      }
+
+      .feedback.is-success {
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      .received {
+        display: grid;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .message {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 48px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.045);
+      }
+
+      .message strong {
+        overflow-wrap: anywhere;
+        font-family: "Arial Black", Impact, sans-serif;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .message span {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .empty {
+        margin: 0;
+        padding: 16px;
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          display: block;
+          padding: 12px;
+        }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        h2 {
+          max-width: 9ch;
+        }
+
+        .input-row {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="app" aria-label="Personal message request receiver">
+        <header class="topbar">
+          <div class="brand">
+            <div class="badge" aria-hidden="true">N0</div>
+            <h1>Sector Message Drop</h1>
+          </div>
+          <div class="status">Online</div>
+        </header>
+
+        <main>
+          <section class="hero" aria-labelledby="page-title">
+            <p class="kicker">Personal request receiver</p>
+            <h2 id="page-title">Send the code</h2>
+            <p class="subcopy">
+              Drop a short personal request into the queue. Keep it tight, clean,
+              and operation-ready.
+            </p>
+            <div class="rules" aria-label="Message rules">
+              <span class="rule">15 characters max</span>
+              <span class="rule">No spaces</span>
+              <span class="rule">Private local inbox</span>
+            </div>
+          </section>
+
+          <section class="inbox" aria-labelledby="form-title">
+            <div class="panel-title">
+              <h3 id="form-title">Request Console</h3>
+              <span class="counter" id="counter">0/15</span>
+            </div>
+
+            <form id="messageForm" novalidate>
+              <label for="messageInput">Message</label>
+              <div class="input-row">
+                <input
+                  id="messageInput"
+                  name="message"
+                  autocomplete="off"
+                  maxlength="15"
+                  pattern="\\S{1,15}"
+                  placeholder="TYPEHERE"
+                  required
+                />
+                <button type="submit">Send</button>
+              </div>
+              <p class="hint">Use letters, numbers, or symbols. Spaces are blocked.</p>
+              <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="received" id="received" aria-live="polite"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const form = document.querySelector("#messageForm");
+      const input = document.querySelector("#messageInput");
+      const counter = document.querySelector("#counter");
+      const feedback = document.querySelector("#feedback");
+      const received = document.querySelector("#received");
+      const storageKey = "sector-message-drop";
+
+      const getMessages = () => JSON.parse(localStorage.getItem(storageKey) || "[]");
+      const saveMessages = (messages) => localStorage.setItem(storageKey, JSON.stringify(messages));
+
+      const renderMessages = () => {
+        const messages = getMessages();
+        received.innerHTML = "";
+
+        if (!messages.length) {
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "No requests received yet.";
+          received.append(empty);
+          return;
+        }
+
+        messages.slice(0, 4).forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "message";
+
+          const text = document.createElement("strong");
+          text.textContent = item.text;
+
+          const time = document.createElement("span");
+          time.textContent = item.time;
+
+          row.append(text, time);
+          received.append(row);
+        });
+      };
+
+      const validate = (value) => {
+        if (!value) return "Enter a message.";
+        if (value.length > 15) return "Keep it to 15 characters.";
+        if (/\s/.test(value)) return "No spaces allowed.";
+        return "";
+      };
+
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\s/g, "").slice(0, 15);
+        counter.textContent = `${input.value.length}/15`;
+        feedback.textContent = "";
+        feedback.className = "feedback";
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = input.value.trim();
+        const issue = validate(value);
+
+        if (issue) {
+          feedback.textContent = issue;
+          feedback.className = "feedback is-error";
+          return;
+        }
+
+        const messages = getMessages();
+        messages.unshift({
+          text: value,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        });
+        saveMessages(messages.slice(0, 20));
+        input.value = "";
+        counter.textContent = "0/15";
+        feedback.textContent = "Request received.";
+        feedback.className = "feedback is-success";
+        renderMessages();
+      });
+
+      renderMessages();
+    </script>
+  </body>
+</html>
