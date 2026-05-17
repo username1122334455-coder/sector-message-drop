@@ -1149,6 +1149,7 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       };
 
       const rollingLimitMs = 60 * 60 * 1000;
+      const deviceLimitPerHour = 2;
 
       const getDeviceLimit = () => {
         try {
@@ -1158,13 +1159,27 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
         }
       };
 
+      const getDeviceDropTimes = () => {
+        const savedLimit = getDeviceLimit();
+        const rawTimes = Array.isArray(savedLimit.sentAtList) ? savedLimit.sentAtList : [savedLimit.sentAt];
+        const cutoff = Date.now() - rollingLimitMs;
+        return rawTimes
+          .map((sentAt) => Number(sentAt) || 0)
+          .filter((sentAt) => sentAt > cutoff)
+          .sort((a, b) => a - b);
+      };
+
       const markDeviceLimitUsed = () => {
-        localStorage.setItem(deviceLimitKey, JSON.stringify({ sentAt: Date.now() }));
+        const sentAtList = [...getDeviceDropTimes(), Date.now()].slice(-deviceLimitPerHour);
+        localStorage.setItem(deviceLimitKey, JSON.stringify({ sentAtList }));
       };
 
       const getDeviceLimitIssue = () => {
-        const sentAt = Number(getDeviceLimit().sentAt) || 0;
-        const resetAt = sentAt + rollingLimitMs;
+        const sentAtList = getDeviceDropTimes();
+
+        if (sentAtList.length < deviceLimitPerHour) return "";
+
+        const resetAt = sentAtList[0] + rollingLimitMs;
         const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
         if (resetSeconds > 0) {
@@ -1175,8 +1190,11 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       };
 
       const getResetSeconds = () => {
-        const sentAt = Number(getDeviceLimit().sentAt) || 0;
-        return Math.max(Math.ceil((sentAt + rollingLimitMs - Date.now()) / 1000), 0);
+        const sentAtList = getDeviceDropTimes();
+
+        if (sentAtList.length < deviceLimitPerHour) return 0;
+
+        return Math.max(Math.ceil((sentAtList[0] + rollingLimitMs - Date.now()) / 1000), 0);
       };
 
       const formatCountdown = (seconds) => {
@@ -1453,7 +1471,7 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
               setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
             } else {
-              setFeedback("MSG sent - one message per hour");
+              setFeedback("MSG sent - two messages per hour");
             }
           } else {
             setFeedback("MSG sent");

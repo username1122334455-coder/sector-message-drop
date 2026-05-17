@@ -52,8 +52,8 @@ declare
   v_global_count int;
   v_device_remaining int;
   v_reset_seconds int;
-  v_device_limit int := 1;
-  v_ip_limit int := 1;
+  v_device_limit int := 2;
+  v_ip_limit int := 2;
   v_global_limit int := 20;
   v_window interval := interval '1 hour';
   v_reset_at timestamptz;
@@ -120,7 +120,7 @@ begin
   insert into public.drops (message, client_hash, ip_hash)
   values (p_message, v_client_hash, v_ip_hash);
 
-  v_device_remaining := 0;
+  v_device_remaining := greatest(v_device_limit - v_device_count - 1, 0);
 
   return jsonb_build_object(
     'ok', true,
