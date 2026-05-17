@@ -292,36 +292,13 @@
       }
 
       .terminal-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-      }
-
-      .status-block {
         display: grid;
-        gap: 4px;
-        color: var(--muted);
-        font-family: "Share Tech Mono", monospace;
-        font-size: 0.78rem;
-        line-height: 1.25;
-        text-transform: uppercase;
+        justify-items: end;
       }
 
-      .status-line,
-      .receipt-line,
       .stats-row span,
       .terminal-log {
         transition: opacity 180ms ease, transform 180ms ease, text-shadow 180ms ease;
-      }
-
-      .status-line.is-flashing {
-        animation: glitchFade 360ms steps(2);
-      }
-
-      .receipt-line {
-        color: rgba(255, 209, 102, 0.82);
-        font-size: 0.7rem;
       }
 
       .panel-title {
@@ -847,11 +824,6 @@
       }
 
       @media (max-width: 520px) {
-        .terminal-head {
-          align-items: stretch;
-          flex-direction: column-reverse;
-        }
-
         .clock-chip {
           justify-self: start;
         }
@@ -880,11 +852,6 @@
       <section class="mission-grid">
         <section class="panel" aria-label="Message input">
           <div class="terminal-head">
-            <div class="status-block" aria-live="polite">
-              <span class="status-line" id="statusLineOne">INTERFACE READY</span>
-              <span class="status-line" id="statusLineTwo">AWAITING DROP</span>
-              <span class="receipt-line" id="receiptLine">SESSION RECEIPT: A7X-91</span>
-            </div>
             <time class="clock-chip" id="militaryClock" aria-label="Current 24-hour time">00:00:00</time>
           </div>
           <form id="messageForm" novalidate>
@@ -914,7 +881,6 @@
             <summary>
               <span>
                 <span class="pgp-title">PGP PUBLIC KEY</span><br />
-                PUBLIC KEY PROVIDED FOR MANUAL ENCRYPTION<br />
                 PGP AVAILABLE -- ENCRYPT BEFORE DROP<br />
                 KEY ROTATED: 2026-05-17
               </span>
@@ -951,9 +917,6 @@
       const militaryClock = document.querySelector("#militaryClock");
       const panel = document.querySelector(".panel");
       const consoleShell = document.querySelector(".console");
-      const statusLineOne = document.querySelector("#statusLineOne");
-      const statusLineTwo = document.querySelector("#statusLineTwo");
-      const receiptLine = document.querySelector("#receiptLine");
       const terminalLog = document.querySelector("#terminalLog");
       const dropsToday = document.querySelector("#dropsToday");
       const usersOnline = document.querySelector("#usersOnline");
@@ -1004,7 +967,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
 -----END PGP PUBLIC KEY BLOCK-----`;
       let audioContext;
       let lastMissionAlertAt = 0;
-      let currentStatusMode = "";
       let logTimer;
       let logTypingTimer;
       let dropsTodayCount = null;
@@ -1044,36 +1006,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
         setTimeout(() => copyStatus.classList.remove("is-visible"), 1600);
       };
 
-      const createReceiptId = () => {
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        const code = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-        const digits = String(Math.floor(Math.random() * 100)).padStart(2, "0");
-        return `${code}-${digits}`;
-      };
-
-      const updateReceipt = () => {
-        receiptLine.textContent = `SESSION RECEIPT: ${createReceiptId()}`;
-      };
-
-      const setStatusMode = (mode) => {
-        if (currentStatusMode === mode) return;
-        currentStatusMode = mode;
-
-        if (mode === "active") {
-          statusLineOne.textContent = "LOCAL INPUT ACTIVE";
-          statusLineTwo.textContent = "PUBLIC KEY PROVIDED";
-        } else {
-          statusLineOne.textContent = "INTERFACE READY";
-          statusLineTwo.textContent = "AWAITING DROP";
-        }
-
-        [statusLineOne, statusLineTwo].forEach((line) => {
-          line.classList.remove("is-flashing");
-          void line.offsetWidth;
-          line.classList.add("is-flashing");
-        });
-      };
-
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
@@ -1089,7 +1021,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
         const hasText = input.value.length > 0;
         panel.classList.toggle("is-active", hasText);
         sendButton.classList.toggle("has-text", hasText);
-        setStatusMode(hasText ? "active" : "idle");
       };
 
       const updatePlaceholder = () => {
@@ -1395,7 +1326,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       pgpPublicKeyBox.textContent = pgpPublicKey;
       updatePlaceholder();
       setInterval(updatePlaceholder, 3200);
-      updateReceipt();
       updateActivityState();
       autoExpandInput();
       updateResetTimer();
@@ -1461,7 +1391,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
           updateResetTimer();
           setDropsToday((dropsTodayCount ?? 0) + 1);
           loadDropStats();
-          updateReceipt();
           runSendBurst();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
