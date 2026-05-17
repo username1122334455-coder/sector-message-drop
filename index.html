@@ -504,8 +504,8 @@
 
       .stats-row {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) 120px;
+        gap: 10px;
         padding-top: 4px;
         color: rgba(255, 241, 223, 0.72);
         font-family: "Share Tech Mono", monospace;
@@ -520,6 +520,8 @@
       }
 
       .stats-row .timer {
+        grid-column: 2;
+        text-align: center;
         color: var(--accent-2);
         animation: timerFlicker 2.4s steps(2) infinite;
       }
@@ -747,6 +749,11 @@
 
         .stats-row {
           grid-template-columns: 1fr;
+        }
+
+        .stats-row .timer {
+          grid-column: auto;
+          text-align: left;
         }
 
         form {
