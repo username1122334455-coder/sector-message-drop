@@ -13,6 +13,15 @@ create table if not exists public.drops (
 alter table public.drops
   add column if not exists ip_hash text;
 
+alter table public.drops
+  drop constraint if exists drops_message_format;
+
+alter table public.drops
+  add constraint drops_message_format check (
+    char_length(message) between 1 and 26
+    and message !~ '\s'
+  );
+
 create index if not exists drops_client_hash_created_at_idx
   on public.drops (client_hash, created_at desc);
 
@@ -118,3 +127,26 @@ $$;
 revoke all on public.drops from anon, authenticated;
 grant execute on function public.submit_drop(text, uuid) to anon;
 grant execute on function public.submit_drop(text, uuid) to authenticated;
+
+create or replace function public.get_drop_stats()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_drops_today int;
+begin
+  select count(*)
+    into v_drops_today
+    from public.drops
+   where timezone('America/Denver', created_at)::date = timezone('America/Denver', now())::date;
+
+  return jsonb_build_object(
+    'drops_today', v_drops_today
+  );
+end;
+$$;
+
+grant execute on function public.get_drop_stats() to anon;
+grant execute on function public.get_drop_stats() to authenticated;
