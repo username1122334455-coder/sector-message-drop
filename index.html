@@ -504,7 +504,7 @@
 
       .stats-row {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
         gap: 8px;
         padding-top: 4px;
         color: rgba(255, 241, 223, 0.72);
@@ -790,7 +790,6 @@
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="stats-row" aria-label="Terminal activity stats">
-            <span id="dropsToday">-- DROPS RECEIVED</span>
             <span id="usersOnline">0 USERS ONLINE</span>
             <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
@@ -817,7 +816,6 @@
       const panel = document.querySelector(".panel");
       const consoleShell = document.querySelector(".console");
       const terminalLog = document.querySelector("#terminalLog");
-      const dropsToday = document.querySelector("#dropsToday");
       const usersOnline = document.querySelector("#usersOnline");
       const resetTimer = document.querySelector("#resetTimer");
       const missionAlert = document.querySelector("#missionAlert");
@@ -847,7 +845,6 @@
       let lastMissionAlertAt = 0;
       let logTimer;
       let logTypingTimer;
-      let dropsTodayCount = null;
       let placeholderIndex = 0;
 
       const isConfigured =
@@ -994,23 +991,6 @@
 
       const updateResetTimer = () => {
         resetTimer.textContent = `MESSAGE COUNTER RESETS IN ${formatCountdown(getResetSeconds())}`;
-      };
-
-      const setDropsToday = (count) => {
-        dropsTodayCount = Math.max(Number(count) || 0, 0);
-        dropsToday.textContent = `${dropsTodayCount} DROPS RECEIVED`;
-      };
-
-      const loadDropStats = async () => {
-        if (!client) return;
-
-        try {
-          const { data, error } = await client.rpc("get_drop_stats");
-          if (error) return;
-          setDropsToday(data?.drops_received ?? data?.drops_today);
-        } catch {
-          dropsToday.textContent = "-- DROPS RECEIVED";
-        }
       };
 
       const updateOnlineUsers = (count) => {
@@ -1186,7 +1166,6 @@
       autoExpandInput();
       updateResetTimer();
       setInterval(updateResetTimer, 1000);
-      loadDropStats();
       initPresence();
       scheduleTerminalLog();
       updateCaret();
@@ -1245,7 +1224,6 @@
           updateActivityState();
           markDeviceLimitUsed();
           updateResetTimer();
-          loadDropStats();
           runSendBurst();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
