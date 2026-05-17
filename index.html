@@ -37,14 +37,8 @@
         overflow-x: hidden;
         color: var(--text);
         background-color: var(--bg);
-        background-image:
-          linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.76)),
-          radial-gradient(circle at 50% 44%, rgba(255, 138, 61, 0.18), transparent 38%),
-          url("assets/dubai-night-skyline.png");
-        background-attachment: fixed;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: cover;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.38) 1px, transparent 1px);
+        background-size: 18px 18px;
       }
 
       body::before,
@@ -62,7 +56,7 @@
           linear-gradient(rgba(255, 138, 61, 0.045) 1px, transparent 1px),
           linear-gradient(90deg, rgba(255, 138, 61, 0.045) 1px, transparent 1px);
         background-size: 18px 18px, 42px 42px, 42px 42px;
-        opacity: 0.82;
+        opacity: 0.36;
       }
 
       body::after {
@@ -279,6 +273,7 @@
       }
 
       form {
+        position: relative;
         display: flex;
         gap: 10px;
       }
@@ -316,6 +311,19 @@
 
       input::placeholder {
         color: rgba(255, 209, 102, 0.82);
+      }
+
+      .typing-caret {
+        position: absolute;
+        top: 50%;
+        left: var(--caret-left, 18px);
+        width: 2px;
+        height: 1.45rem;
+        border-radius: 999px;
+        background: var(--accent-2);
+        box-shadow: 0 0 10px rgba(255, 209, 102, 0.7);
+        pointer-events: none;
+        transform: translateY(-50%);
         animation: cursorBlink 0.9s steps(1) infinite;
       }
 
@@ -495,9 +503,10 @@
               autocomplete="off"
               maxlength="15"
               pattern="\S{1,15}"
-              placeholder="|"
+              placeholder=""
               required
             />
+            <span class="typing-caret" id="typingCaret" aria-hidden="true"></span>
             <button id="sendButton" type="submit">Send</button>
           </form>
 
@@ -515,6 +524,7 @@
       const input = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
       const feedback = document.querySelector("#feedback");
+      const typingCaret = document.querySelector("#typingCaret");
       const clientIdKey = "sector-message-drop-client-id";
       let audioContext;
 
@@ -547,6 +557,15 @@
         if (value.length > 15) return "Codeword max is 15 characters.";
         if (/\s/.test(value)) return "No spaces in the drop.";
         return "";
+      };
+
+      const updateCaret = () => {
+        const inputStyles = getComputedStyle(input);
+        const fontSize = parseFloat(inputStyles.fontSize);
+        const leftPadding = parseFloat(inputStyles.paddingLeft);
+        const characterWidth = fontSize * 0.62;
+        const visibleLength = Math.min(input.value.length, 15);
+        typingCaret.style.setProperty("--caret-left", `${leftPadding + visibleLength * characterWidth}px`);
       };
 
       const playTypewriterClick = () => {
@@ -603,8 +622,12 @@
 
       input.addEventListener("input", () => {
         input.value = input.value.replace(/\s/g, "").slice(0, 15);
+        updateCaret();
         setFeedback("Ready for drop.");
       });
+
+      window.addEventListener("resize", updateCaret);
+      updateCaret();
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -643,7 +666,8 @@
           }
 
           input.value = "";
-          setFeedback("MSG sent 🙈");
+          updateCaret();
+          setFeedback("MSG sent");
         } finally {
           sendButton.disabled = false;
         }
