@@ -179,3 +179,5 @@ $$;
 
 grant execute on function public.get_drop_stats() to anon;
 grant execute on function public.get_drop_stats() to authenticated;
+
+notify pgrst, 'reload schema';
