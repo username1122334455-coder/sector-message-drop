@@ -42,6 +42,12 @@ declare
   v_ip_count int;
   v_device_remaining int;
   v_ip_remaining int;
+  v_local_now timestamp;
+  v_window_start_local timestamp;
+  v_window_end_local timestamp;
+  v_window_start_at timestamptz;
+  v_window_end_at timestamptz;
+  v_local_hour int;
 begin
   p_message := upper(trim(p_message));
 
@@ -67,23 +73,50 @@ begin
     'unknown'
   );
   v_ip_hash := md5(trim(v_ip));
+  v_local_now := timezone('America/Denver', now());
+  v_local_hour := extract(hour from v_local_now)::int;
+
+  if v_local_hour < 10 or v_local_hour >= 22 then
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'Drops are closed until 10AM Mountain Time.',
+      'device_remaining', 0,
+      'ip_remaining', 0
+    );
+  end if;
+
+  if v_local_hour < 14 then
+    v_window_start_local := date_trunc('day', v_local_now) + interval '10 hours';
+    v_window_end_local := date_trunc('day', v_local_now) + interval '14 hours';
+  elsif v_local_hour < 18 then
+    v_window_start_local := date_trunc('day', v_local_now) + interval '14 hours';
+    v_window_end_local := date_trunc('day', v_local_now) + interval '18 hours';
+  else
+    v_window_start_local := date_trunc('day', v_local_now) + interval '18 hours';
+    v_window_end_local := date_trunc('day', v_local_now) + interval '22 hours';
+  end if;
+
+  v_window_start_at := v_window_start_local at time zone 'America/Denver';
+  v_window_end_at := v_window_end_local at time zone 'America/Denver';
 
   select count(*)
     into v_device_count
     from public.drops
    where client_hash = v_client_hash
-     and created_at >= now() - interval '1 hour';
+     and created_at >= v_window_start_at
+     and created_at < v_window_end_at;
 
   select count(*)
     into v_ip_count
     from public.drops
    where ip_hash = v_ip_hash
-     and created_at >= now() - interval '1 hour';
+     and created_at >= v_window_start_at
+     and created_at < v_window_end_at;
 
   if v_ip_count >= 1 then
     return jsonb_build_object(
       'ok', false,
-      'message', 'IP limit reached. Try again next hour.',
+      'message', 'IP limit reached for this Mountain Time window.',
       'device_remaining', greatest(2 - v_device_count, 0),
       'ip_remaining', 0
     );
@@ -92,7 +125,7 @@ begin
   if v_device_count >= 2 then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Device limit reached. Try again next hour.',
+      'message', 'Device limit reached for this Mountain Time window.',
       'device_remaining', 0,
       'ip_remaining', greatest(1 - v_ip_count, 0)
     );
