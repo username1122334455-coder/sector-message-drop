@@ -824,8 +824,8 @@
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="stats-row" aria-label="Terminal activity stats">
             <span id="dropsToday">-- DROPS TODAY</span>
-            <span id="usersOnline">1 USER ONLINE</span>
-            <span class="timer" id="resetTimer">PURGE / MESSAGE RESET IN 00:00</span>
+            <span id="usersOnline">0 USERS ONLINE</span>
+            <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
         </section>
       </section>
@@ -1040,13 +1040,14 @@
 
       const formatCountdown = (seconds) => {
         const safeSeconds = Math.max(Number(seconds) || 0, 0);
-        const minutes = Math.floor(safeSeconds / 60);
+        const hours = Math.floor(safeSeconds / 3600);
+        const minutes = Math.floor((safeSeconds % 3600) / 60);
         const remainder = safeSeconds % 60;
-        return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
       };
 
       const updateResetTimer = () => {
-        resetTimer.textContent = `PURGE / MESSAGE RESET IN ${formatCountdown(getResetSeconds())}`;
+        resetTimer.textContent = `MESSAGE COUNTER RESETS IN ${formatCountdown(getResetSeconds())}`;
       };
 
       const setDropsToday = (count) => {
@@ -1067,7 +1068,7 @@
       };
 
       const updateOnlineUsers = (count) => {
-        const safeCount = Math.max(Number(count) || 1, 1);
+        const safeCount = Math.max(Number(count) || 0, 0);
         usersOnline.textContent = `${safeCount} ${safeCount === 1 ? "USER" : "USERS"} ONLINE`;
       };
 
