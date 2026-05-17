@@ -6,7 +6,8 @@ Anonymous Supabase-backed message drop website.
 
 - Stores messages in Supabase instead of browser-only local storage.
 - Allows anonymous users to send messages without accounts.
-- Limits each browser token to 10 drops per hour.
+- Limits each browser token to 2 drops per hour.
+- Limits the whole site to 20 total drops per hour.
 - Each message must be 1-15 characters with no spaces.
 
 ## Supabase setup

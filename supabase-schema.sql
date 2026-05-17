@@ -1,5 +1,3 @@
-create extension if not exists pgcrypto;
-
 create table if not exists public.drops (
   id bigint generated always as identity primary key,
   message text not null,
@@ -30,8 +28,10 @@ set search_path = public
 as $$
 declare
   v_client_hash text;
-  v_count int;
-  v_remaining int;
+  v_device_count int;
+  v_global_count int;
+  v_device_remaining int;
+  v_global_remaining int;
 begin
   p_message := upper(trim(p_message));
 
@@ -43,35 +43,53 @@ begin
     return jsonb_build_object(
       'ok', false,
       'message', 'Message must be 1-15 characters with no spaces.',
-      'remaining', 0
+      'device_remaining', 0,
+      'global_remaining', 0
     );
   end if;
 
-  v_client_hash := encode(digest(p_client_id::text, 'sha256'), 'hex');
+  v_client_hash := md5(p_client_id::text);
 
   select count(*)
-    into v_count
+    into v_device_count
     from public.drops
    where client_hash = v_client_hash
      and created_at >= now() - interval '1 hour';
 
-  if v_count >= 10 then
+  select count(*)
+    into v_global_count
+    from public.drops
+   where created_at >= now() - interval '1 hour';
+
+  if v_device_count >= 2 then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Hourly limit reached.',
-      'remaining', 0
+      'message', 'Device limit reached. Try again next hour.',
+      'device_remaining', 0,
+      'global_remaining', greatest(20 - v_global_count, 0)
+    );
+  end if;
+
+  if v_global_count >= 20 then
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'Sector limit reached. Try again next hour.',
+      'device_remaining', greatest(2 - v_device_count, 0),
+      'global_remaining', 0
     );
   end if;
 
   insert into public.drops (message, client_hash)
   values (p_message, v_client_hash);
 
-  v_remaining := 9 - v_count;
+  v_device_remaining := 1 - v_device_count;
+  v_global_remaining := 19 - v_global_count;
 
   return jsonb_build_object(
     'ok', true,
     'message', 'Drop received.',
-    'remaining', v_remaining
+    'device_remaining', v_device_remaining,
+    'global_remaining', v_global_remaining
   );
 end;
 $$;
