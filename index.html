@@ -919,9 +919,9 @@
       };
 
       const validate = (value) => {
-        if (!value) return "Enter a codeword.";
-        if (value.length > 26) return "Codeword max is 26 characters.";
-        if (/\s/.test(value)) return "No spaces in the drop.";
+        if (!value) return "Enter a message.";
+        if (value.length > 26) return "Message max is 26 characters.";
+        if (/\s/.test(value)) return "No spaces.";
         return "";
       };
 
@@ -1007,7 +1007,7 @@
         try {
           const { data, error } = await client.rpc("get_drop_stats");
           if (error) return;
-          setDropsToday(data?.drops_today);
+          setDropsToday(data?.drops_received ?? data?.drops_today);
         } catch {
           dropsToday.textContent = "-- DROPS RECEIVED";
         }
