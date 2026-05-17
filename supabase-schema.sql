@@ -2,6 +2,7 @@ create table if not exists public.drops (
   id bigint generated always as identity primary key,
   message text not null,
   client_hash text not null,
+  ip_hash text,
   created_at timestamptz not null default now(),
   constraint drops_message_format check (
     char_length(message) between 1 and 15
@@ -9,8 +10,14 @@ create table if not exists public.drops (
   )
 );
 
+alter table public.drops
+  add column if not exists ip_hash text;
+
 create index if not exists drops_client_hash_created_at_idx
   on public.drops (client_hash, created_at desc);
+
+create index if not exists drops_ip_hash_created_at_idx
+  on public.drops (ip_hash, created_at desc);
 
 alter table public.drops enable row level security;
 
@@ -27,11 +34,14 @@ security definer
 set search_path = public
 as $$
 declare
+  v_headers jsonb;
   v_client_hash text;
+  v_ip text;
+  v_ip_hash text;
   v_device_count int;
-  v_global_count int;
+  v_ip_count int;
   v_device_remaining int;
-  v_global_remaining int;
+  v_ip_remaining int;
 begin
   p_message := upper(trim(p_message));
 
@@ -44,11 +54,19 @@ begin
       'ok', false,
       'message', 'Message must be 1-15 characters with no spaces.',
       'device_remaining', 0,
-      'global_remaining', 0
+      'ip_remaining', 0
     );
   end if;
 
+  v_headers := coalesce(nullif(current_setting('request.headers', true), '')::jsonb, '{}'::jsonb);
   v_client_hash := md5(p_client_id::text);
+  v_ip := coalesce(
+    v_headers ->> 'cf-connecting-ip',
+    split_part(v_headers ->> 'x-forwarded-for', ',', 1),
+    v_headers ->> 'x-real-ip',
+    'unknown'
+  );
+  v_ip_hash := md5(trim(v_ip));
 
   select count(*)
     into v_device_count
@@ -57,39 +75,40 @@ begin
      and created_at >= now() - interval '1 hour';
 
   select count(*)
-    into v_global_count
+    into v_ip_count
     from public.drops
-   where created_at >= now() - interval '1 hour';
+   where ip_hash = v_ip_hash
+     and created_at >= now() - interval '1 hour';
+
+  if v_ip_count >= 1 then
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'IP limit reached. Try again next hour.',
+      'device_remaining', greatest(2 - v_device_count, 0),
+      'ip_remaining', 0
+    );
+  end if;
 
   if v_device_count >= 2 then
     return jsonb_build_object(
       'ok', false,
       'message', 'Device limit reached. Try again next hour.',
       'device_remaining', 0,
-      'global_remaining', greatest(20 - v_global_count, 0)
+      'ip_remaining', greatest(1 - v_ip_count, 0)
     );
   end if;
 
-  if v_global_count >= 20 then
-    return jsonb_build_object(
-      'ok', false,
-      'message', 'Sector limit reached. Try again next hour.',
-      'device_remaining', greatest(2 - v_device_count, 0),
-      'global_remaining', 0
-    );
-  end if;
-
-  insert into public.drops (message, client_hash)
-  values (p_message, v_client_hash);
+  insert into public.drops (message, client_hash, ip_hash)
+  values (p_message, v_client_hash, v_ip_hash);
 
   v_device_remaining := 1 - v_device_count;
-  v_global_remaining := 19 - v_global_count;
+  v_ip_remaining := 0;
 
   return jsonb_build_object(
     'ok', true,
     'message', 'Drop received.',
     'device_remaining', v_device_remaining,
-    'global_remaining', v_global_remaining
+    'ip_remaining', v_ip_remaining
   );
 end;
 $$;
