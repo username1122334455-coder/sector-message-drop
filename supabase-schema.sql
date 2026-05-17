@@ -33,6 +33,8 @@ alter table public.drops enable row level security;
 drop policy if exists "No public reads" on public.drops;
 drop policy if exists "No public writes" on public.drops;
 
+drop function if exists public.submit_drop(text, uuid);
+
 create or replace function public.submit_drop(
   p_message text,
   p_client_id uuid
