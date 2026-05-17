@@ -398,7 +398,7 @@
       }
 
       .mission-alert.is-visible {
-        animation: alertPop 3.2s ease both;
+        animation: alertPop 32s ease both;
       }
 
       .mission-alert__label,
@@ -487,7 +487,7 @@
           transform: translateY(16px) scale(0.96);
         }
         12%,
-        86% {
+        94% {
           opacity: 1;
           transform: translateY(0) scale(1);
         }
@@ -586,10 +586,8 @@
       const deviceLimitKey = "sector-message-drop-device-window";
       const responseCooldownMs = 3500;
       const keywordReplies = [
-        { keyword: "sector", reply: "ACCESS GRANTED" },
-        { keyword: "rainbow", reply: "SIGNAL DETECTED" },
-        { keyword: "pizza", reply: "MISSION ACCEPTED" },
         { keyword: "snapchat", reply: "ramsland9000" },
+        { keyword: "rollerblade", reply: "ramsland9000" },
       ];
       let audioContext;
       let lastMissionAlertAt = 0;
