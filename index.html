@@ -652,9 +652,12 @@
 
           input.value = "";
           updateCaret();
-          setFeedback(
-            `MSG sent - ${data.device_remaining === 1 ? "one" : data.device_remaining} remaining until ${data.window_ends_label || "window ends"}`
-          );
+          if (Number.isInteger(data.device_remaining) && data.window_ends_label) {
+            const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
+            setFeedback(`MSG sent - ${remainingText} remaining until ${data.window_ends_label}`);
+          } else {
+            setFeedback("MSG sent");
+          }
         } finally {
           sendButton.disabled = false;
         }
