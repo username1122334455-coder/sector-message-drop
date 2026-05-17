@@ -111,7 +111,7 @@ begin
   if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit or v_global_count >= v_global_limit then
     return jsonb_build_object(
       'ok', false,
-      'message', 'DEVICE WINDOW CLOSED. DROP CHANNEL RESETS IN ' || floor(v_reset_seconds / 60) || 'M ' || mod(v_reset_seconds, 60) || 'S.',
+      'message', 'DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ' || floor(v_reset_seconds / 60) || 'M ' || mod(v_reset_seconds, 60) || 'S.',
       'device_remaining', 0,
       'reset_seconds', v_reset_seconds
     );

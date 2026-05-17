@@ -533,6 +533,15 @@
         text-transform: uppercase;
       }
 
+      .limit-note {
+        margin: -4px 0 0;
+        color: rgba(255, 241, 223, 0.62);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.66rem;
+        line-height: 1.25;
+        text-transform: uppercase;
+      }
+
       .mission-alert {
         position: fixed;
         right: clamp(14px, 4vw, 28px);
@@ -803,6 +812,7 @@
             <span id="usersOnline">0 USERS ONLINE</span>
             <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
+          <p class="limit-note">2 messages per hour per device/IP when recognizable</p>
           <p class="pgp-available">PGP AVAILABLE</p>
         </section>
       </section>
@@ -980,7 +990,7 @@
         const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
         if (resetSeconds > 0) {
-          return `DEVICE WINDOW CLOSED. DROP CHANNEL RESETS IN ${formatDuration(resetSeconds)}.`;
+          return `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${formatDuration(resetSeconds)}.`;
         }
 
         return "";
@@ -1245,7 +1255,7 @@
 
           if (!data?.ok) {
             const resetText = data?.reset_seconds ? formatDuration(data.reset_seconds) : "later";
-            setFeedback(data?.message || `DEVICE WINDOW CLOSED. DROP CHANNEL RESETS IN ${resetText}.`, "is-error");
+            setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${resetText}.`, "is-error");
             return;
           }
 
