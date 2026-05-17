@@ -43,6 +43,8 @@ declare
   v_device_remaining int;
   v_reset_at timestamptz;
   v_reset_seconds int;
+  v_device_limit int := 1;
+  v_ip_limit int := 1;
   v_window interval := interval '3 hours 30 minutes';
 begin
   p_message := upper(trim(p_message));
@@ -90,10 +92,10 @@ begin
 
   v_reset_seconds := greatest(ceil(extract(epoch from (coalesce(v_reset_at, now() + v_window) - now())))::int, 0);
 
-  if v_device_count >= 1 or v_ip_count >= 1 then
+  if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Limit reached. Try again in ' || v_reset_seconds || ' seconds.',
+      'message', 'Limit reached. One message per device and IP.',
       'device_remaining', 0,
       'reset_seconds', v_reset_seconds
     );
