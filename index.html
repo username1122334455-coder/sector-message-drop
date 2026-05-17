@@ -315,7 +315,8 @@
       }
 
       input::placeholder {
-        color: rgba(217, 166, 138, 0.76);
+        color: rgba(255, 209, 102, 0.82);
+        animation: cursorBlink 0.9s steps(1) infinite;
       }
 
       input:focus {
@@ -425,6 +426,17 @@
         }
       }
 
+      @keyframes cursorBlink {
+        0%,
+        49% {
+          opacity: 1;
+        }
+        50%,
+        100% {
+          opacity: 0.18;
+        }
+      }
+
       @media (max-width: 760px) {
         .console {
           padding: 16px;
@@ -472,7 +484,6 @@
         <div class="radar" aria-hidden="true">
           <span class="blip one"></span>
           <span class="blip two"></span>
-          <p class="radar-label">sector scan active</p>
         </div>
 
         <section class="panel" aria-label="Message input">
@@ -484,7 +495,7 @@
               autocomplete="off"
               maxlength="15"
               pattern="\S{1,15}"
-              placeholder="CODEWORD"
+              placeholder="|"
               required
             />
             <button id="sendButton" type="submit">Send</button>
@@ -542,23 +553,43 @@
         audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
 
         const now = audioContext.currentTime;
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
+        const noiseLength = Math.floor(audioContext.sampleRate * 0.035);
+        const noiseBuffer = audioContext.createBuffer(1, noiseLength, audioContext.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        const noise = audioContext.createBufferSource();
+        const click = audioContext.createOscillator();
+        const noiseGain = audioContext.createGain();
+        const clickGain = audioContext.createGain();
         const filter = audioContext.createBiquadFilter();
 
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(760 + Math.random() * 120, now);
-        filter.type = "highpass";
-        filter.frequency.setValueAtTime(420, now);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.004);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        for (let index = 0; index < noiseLength; index += 1) {
+          noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseLength);
+        }
 
-        oscillator.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioContext.destination);
-        oscillator.start(now);
-        oscillator.stop(now + 0.05);
+        noise.buffer = noiseBuffer;
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(2400 + Math.random() * 500, now);
+        filter.Q.setValueAtTime(1.6, now);
+
+        click.type = "square";
+        click.frequency.setValueAtTime(1200 + Math.random() * 180, now);
+        clickGain.gain.setValueAtTime(0.0001, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.045, now + 0.002);
+        clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
+
+        noiseGain.gain.setValueAtTime(0.0001, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.16, now + 0.002);
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.034);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(audioContext.destination);
+        click.connect(clickGain);
+        clickGain.connect(audioContext.destination);
+        noise.start(now);
+        click.start(now);
+        noise.stop(now + 0.04);
+        click.stop(now + 0.02);
       };
 
       input.addEventListener("keydown", (event) => {
@@ -612,9 +643,7 @@
           }
 
           input.value = "";
-          setFeedback(
-            `Drop received. Device ${data.device_remaining}/2 left. Sector ${data.global_remaining}/20 left.`
-          );
+          setFeedback("MSG sent 🙈");
         } finally {
           sendButton.disabled = false;
         }
