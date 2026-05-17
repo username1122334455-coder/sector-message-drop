@@ -544,6 +544,16 @@
         return "";
       };
 
+      const formatDuration = (seconds) => {
+        const safeSeconds = Math.max(Number(seconds) || 0, 0);
+        const minutes = Math.floor(safeSeconds / 60);
+        const remainder = safeSeconds % 60;
+
+        if (minutes && remainder) return `${minutes}m ${remainder}s`;
+        if (minutes) return `${minutes}m`;
+        return `${remainder}s`;
+      };
+
       const updateCaret = () => {
         const inputStyles = getComputedStyle(input);
         const fontSize = parseFloat(inputStyles.fontSize);
@@ -646,15 +656,16 @@
           }
 
           if (!data?.ok) {
-            setFeedback(data?.message || "Hourly drop limit reached.", "is-error");
+            const resetText = data?.reset_seconds ? ` Try again in ${formatDuration(data.reset_seconds)}.` : "";
+            setFeedback(`${data?.message || "Limit reached."}${resetText}`, "is-error");
             return;
           }
 
           input.value = "";
           updateCaret();
-          if (Number.isInteger(data.device_remaining) && data.window_ends_label) {
+          if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
-            setFeedback(`MSG sent - ${remainingText} remaining until ${data.window_ends_label}`);
+            setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
           } else {
             setFeedback("MSG sent");
           }

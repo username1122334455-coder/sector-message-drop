@@ -6,10 +6,9 @@ Anonymous Supabase-backed message drop website.
 
 - Stores messages in Supabase instead of browser-only local storage.
 - Allows anonymous users to send messages without accounts.
-- Limits each anonymous browser/device token to 2 drops per active Mountain-time window.
-- Limits each IP address to 1 drop per active Mountain-time window.
-- Accepts drops only during 10am-2pm, 2pm-6pm, and 6pm-10pm Mountain Time; drops are blocked from 10pm until 10am.
-- After a successful drop, the page shows the remaining device count and the Mountain-time window end.
+- Limits each anonymous browser/device token to 2 drops per 3 minutes 30 seconds.
+- Limits each IP address to 2 drops per 3 minutes 30 seconds.
+- After a successful drop, the page shows the remaining device count and how much time remains in the cooldown window.
 - Each message must be 1-15 characters with no spaces.
 
 Browser websites cannot read a real device MAC address, so the app uses an anonymous browser/device token plus the request IP hash for rate limiting.

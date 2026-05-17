@@ -41,14 +41,9 @@ declare
   v_device_count int;
   v_ip_count int;
   v_device_remaining int;
-  v_ip_remaining int;
-  v_local_now timestamp;
-  v_window_start_local timestamp;
-  v_window_end_local timestamp;
-  v_window_start_at timestamptz;
-  v_window_end_at timestamptz;
-  v_local_hour int;
-  v_window_ends_label text;
+  v_reset_at timestamptz;
+  v_reset_seconds int;
+  v_window interval := interval '3 minutes 30 seconds';
 begin
   p_message := upper(trim(p_message));
 
@@ -61,8 +56,7 @@ begin
       'ok', false,
       'message', 'Message must be 1-15 characters with no spaces.',
       'device_remaining', 0,
-      'ip_remaining', 0,
-      'window_ends_label', null
+      'reset_seconds', 0
     );
   end if;
 
@@ -75,65 +69,33 @@ begin
     'unknown'
   );
   v_ip_hash := md5(trim(v_ip));
-  v_local_now := timezone('America/Denver', now());
-  v_local_hour := extract(hour from v_local_now)::int;
-
-  if v_local_hour < 10 or v_local_hour >= 22 then
-    return jsonb_build_object(
-      'ok', false,
-      'message', 'Drops are closed until 10AM Mountain Time.',
-      'device_remaining', 0,
-      'ip_remaining', 0,
-      'window_ends_label', '10AM MT'
-    );
-  end if;
-
-  if v_local_hour < 14 then
-    v_window_start_local := date_trunc('day', v_local_now) + interval '10 hours';
-    v_window_end_local := date_trunc('day', v_local_now) + interval '14 hours';
-  elsif v_local_hour < 18 then
-    v_window_start_local := date_trunc('day', v_local_now) + interval '14 hours';
-    v_window_end_local := date_trunc('day', v_local_now) + interval '18 hours';
-  else
-    v_window_start_local := date_trunc('day', v_local_now) + interval '18 hours';
-    v_window_end_local := date_trunc('day', v_local_now) + interval '22 hours';
-  end if;
-
-  v_window_start_at := v_window_start_local at time zone 'America/Denver';
-  v_window_end_at := v_window_end_local at time zone 'America/Denver';
-  v_window_ends_label := to_char(v_window_end_local, 'FMHH12AM') || ' MT';
 
   select count(*)
     into v_device_count
     from public.drops
    where client_hash = v_client_hash
-     and created_at >= v_window_start_at
-     and created_at < v_window_end_at;
+     and created_at >= now() - v_window;
 
   select count(*)
     into v_ip_count
     from public.drops
    where ip_hash = v_ip_hash
-     and created_at >= v_window_start_at
-     and created_at < v_window_end_at;
+     and created_at >= now() - v_window;
 
-  if v_ip_count >= 1 then
+  select min(created_at + v_window)
+    into v_reset_at
+    from public.drops
+   where (client_hash = v_client_hash or ip_hash = v_ip_hash)
+     and created_at >= now() - v_window;
+
+  v_reset_seconds := greatest(ceil(extract(epoch from (coalesce(v_reset_at, now() + v_window) - now())))::int, 0);
+
+  if v_device_count >= 2 or v_ip_count >= 2 then
     return jsonb_build_object(
       'ok', false,
-      'message', 'IP limit reached for this Mountain Time window.',
-      'device_remaining', greatest(2 - v_device_count, 0),
-      'ip_remaining', 0,
-      'window_ends_label', v_window_ends_label
-    );
-  end if;
-
-  if v_device_count >= 2 then
-    return jsonb_build_object(
-      'ok', false,
-      'message', 'Device limit reached for this Mountain Time window.',
+      'message', 'Limit reached. Try again in ' || v_reset_seconds || ' seconds.',
       'device_remaining', 0,
-      'ip_remaining', greatest(1 - v_ip_count, 0),
-      'window_ends_label', v_window_ends_label
+      'reset_seconds', v_reset_seconds
     );
   end if;
 
@@ -141,14 +103,12 @@ begin
   values (p_message, v_client_hash, v_ip_hash);
 
   v_device_remaining := 1 - v_device_count;
-  v_ip_remaining := 0;
 
   return jsonb_build_object(
     'ok', true,
     'message', 'Drop received.',
     'device_remaining', v_device_remaining,
-    'ip_remaining', v_ip_remaining,
-    'window_ends_label', v_window_ends_label
+    'reset_seconds', 210
   );
 end;
 $$;
