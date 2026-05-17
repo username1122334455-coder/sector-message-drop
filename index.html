@@ -567,7 +567,7 @@
 
     <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
       <p class="mission-alert__label">mission alert</p>
-      <p class="mission-alert__text" id="missionAlertText">NO SIGNAL MATCH</p>
+      <p class="mission-alert__text" id="missionAlertText"></p>
     </aside>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -584,7 +584,6 @@
       const missionAlertText = document.querySelector("#missionAlertText");
       const clientIdKey = "sector-message-drop-client-id";
       const responseCooldownMs = 3500;
-      const fallbackReply = "NO SIGNAL MATCH";
       const keywordReplies = [
         { keyword: "sector", reply: "ACCESS GRANTED" },
         { keyword: "rainbow", reply: "SIGNAL DETECTED" },
@@ -610,7 +609,7 @@
       const getMissionReply = (message) => {
         const normalizedMessage = message.toLowerCase();
         const match = keywordReplies.find(({ keyword }) => normalizedMessage.includes(keyword));
-        return match?.reply || fallbackReply;
+        return match?.reply || "";
       };
 
       const showMissionAlert = (reply) => {
@@ -735,7 +734,8 @@
           return;
         }
 
-        showMissionAlert(getMissionReply(value));
+        const missionReply = getMissionReply(value);
+        if (missionReply) showMissionAlert(missionReply);
 
         if (!client) {
           setFeedback("Supabase link is not configured.", "is-error");
