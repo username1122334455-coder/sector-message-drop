@@ -916,14 +916,12 @@
                 <span class="pgp-title">PGP PUBLIC KEY</span><br />
                 PUBLIC KEY PROVIDED FOR MANUAL ENCRYPTION<br />
                 PGP AVAILABLE -- ENCRYPT BEFORE DROP<br />
-                FINGERPRINT: <span id="pgpFingerprintShort">4CD3 696E 1D21 D7DF</span><br />
                 KEY ROTATED: 2026-05-17
               </span>
               <span aria-hidden="true">+</span>
             </summary>
             <div class="pgp-copy">
               <button type="button" id="copyPgpKey">Copy public key</button>
-              <button type="button" id="copyFingerprint">Copy fingerprint</button>
               <span class="copy-status" id="copyStatus" aria-live="polite">copied to clipboard</span>
             </div>
             <pre class="pgp-keybox" id="pgpPublicKey"></pre>
@@ -962,7 +960,6 @@
       const resetTimer = document.querySelector("#resetTimer");
       const pgpPublicKeyBox = document.querySelector("#pgpPublicKey");
       const copyPgpKeyButton = document.querySelector("#copyPgpKey");
-      const copyFingerprintButton = document.querySelector("#copyFingerprint");
       const copyStatus = document.querySelector("#copyStatus");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
@@ -990,7 +987,6 @@
         "preparing drop...",
         "sending...",
       ];
-      const pgpFingerprint = "4CD3696E1D21D7DFD78F38400BD754B2675A42B6";
       const pgpPublicKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 
 xsBNBGoKEVcBCACyY2fAcBxXECr7TuLdaHntay4HBgXNMjZb/HmE/JXvDRnKSkKw
@@ -1362,7 +1358,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       });
 
       copyPgpKeyButton.addEventListener("click", () => copyText(pgpPublicKey));
-      copyFingerprintButton.addEventListener("click", () => copyText(pgpFingerprint));
 
       consoleShell.addEventListener("pointermove", (event) => {
         const rect = consoleShell.getBoundingClientRect();
