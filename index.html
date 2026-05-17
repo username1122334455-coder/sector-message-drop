@@ -770,7 +770,7 @@
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
               setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
             } else {
-              setFeedback(`MSG sent - device/IP reset in ${formatDuration(data.reset_seconds)}`);
+              setFeedback(`MSG sent - next MST hour in ${formatDuration(data.reset_seconds)}`);
             }
           } else {
             setFeedback("MSG sent");
