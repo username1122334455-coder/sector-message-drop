@@ -143,14 +143,33 @@ set search_path = public
 as $$
 declare
   v_drops_today int;
+  v_denver_now timestamp;
+  v_window_start_local timestamp;
+  v_window_end_local timestamp;
+  v_window_start timestamptz;
+  v_window_end timestamptz;
 begin
+  v_denver_now := timezone('America/Denver', now());
+  v_window_start_local := date_trunc('day', v_denver_now) + interval '8 hours';
+
+  if v_denver_now < v_window_start_local then
+    v_window_start_local := v_window_start_local - interval '1 day';
+  end if;
+
+  v_window_end_local := v_window_start_local + interval '1 day';
+  v_window_start := v_window_start_local at time zone 'America/Denver';
+  v_window_end := v_window_end_local at time zone 'America/Denver';
+
   select count(*)
     into v_drops_today
     from public.drops
-   where timezone('America/Denver', created_at)::date = timezone('America/Denver', now())::date;
+   where created_at >= v_window_start
+     and created_at < v_window_end;
 
   return jsonb_build_object(
-    'drops_today', v_drops_today
+    'drops_today', v_drops_today,
+    'window_start', v_window_start,
+    'window_end', v_window_end
   );
 end;
 $$;
