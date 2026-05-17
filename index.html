@@ -105,6 +105,22 @@
         content: "";
       }
 
+      .console::after {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          radial-gradient(rgba(255, 209, 102, 0.06) 1px, transparent 1px),
+          radial-gradient(rgba(255, 138, 61, 0.04) 1px, transparent 1px);
+        background-position: 0 0, 7px 9px;
+        background-size: 13px 11px, 17px 19px;
+        mix-blend-mode: screen;
+        opacity: 0.18;
+        content: "";
+        animation: grainDrift 6s steps(3) infinite;
+      }
+
       .console > * {
         position: relative;
         z-index: 1;
@@ -349,30 +365,34 @@
         white-space: nowrap;
       }
 
-      input,
+      textarea,
       button {
-        height: 58px;
         border-radius: 8px;
         font: inherit;
         letter-spacing: 0;
         text-transform: uppercase;
       }
 
-      input {
+      textarea {
         width: 100%;
+        min-height: 58px;
+        max-height: 104px;
         min-width: 0;
         border: 2px solid rgba(255, 138, 61, 0.68);
         outline: none;
-        padding: 0 16px;
+        resize: none;
+        overflow: hidden;
+        padding: 16px;
         background: #150811;
         color: var(--accent);
         font-family: "Share Tech Mono", monospace;
         font-size: clamp(1rem, 4vw, 1.3rem);
+        line-height: 1.3;
         box-shadow: inset 0 0 18px rgba(255, 138, 61, 0.1);
         transition: border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
       }
 
-      input::placeholder {
+      textarea::placeholder {
         color: rgba(255, 209, 102, 0.82);
       }
 
@@ -390,14 +410,14 @@
         animation: cursorBlink 0.9s steps(1) infinite;
       }
 
-      input:focus {
+      textarea:focus {
         border-color: var(--accent-2);
         box-shadow:
           0 0 0 4px rgba(255, 138, 61, 0.14),
           inset 0 0 22px rgba(255, 138, 61, 0.15);
       }
 
-      .panel.is-active input {
+      .panel.is-active textarea {
         border-color: rgba(255, 209, 102, 0.95);
         box-shadow:
           0 0 0 4px rgba(255, 138, 61, 0.2),
@@ -408,6 +428,7 @@
       button {
         flex: 0 0 120px;
         position: relative;
+        height: 58px;
         border: 2px solid rgba(255, 209, 102, 0.9);
         background: linear-gradient(180deg, #ffe08a, #ff9f55);
         color: #1b0711;
@@ -456,6 +477,10 @@
         box-shadow: 0 6px 0 #8f3b1f, 0 0 34px rgba(255, 138, 61, 0.4);
       }
 
+      button.is-burst {
+        animation: sendBurst 620ms ease;
+      }
+
       .feedback {
         min-height: 22px;
         margin: 0;
@@ -466,7 +491,7 @@
         text-transform: uppercase;
       }
 
-      .feedback::before {
+      .feedback:not(:empty)::before {
         content: "> ";
       }
 
@@ -689,6 +714,33 @@
         }
       }
 
+      @keyframes sendBurst {
+        0% {
+          filter: brightness(1.1);
+          box-shadow: 0 6px 0 #8f3b1f, 0 0 22px rgba(255, 138, 61, 0.25);
+        }
+        45% {
+          filter: brightness(1.28) saturate(1.25);
+          box-shadow: 0 6px 0 #8f3b1f, 0 0 42px rgba(255, 209, 102, 0.52);
+        }
+        100% {
+          filter: brightness(1.08);
+          box-shadow: 0 6px 0 #8f3b1f, 0 0 26px rgba(255, 138, 61, 0.28);
+        }
+      }
+
+      @keyframes grainDrift {
+        0% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(1px, -1px);
+        }
+        100% {
+          transform: translate(-1px, 1px);
+        }
+      }
+
       @media (max-width: 760px) {
         .console {
           padding: 16px;
@@ -754,15 +806,16 @@
           </div>
           <form id="messageForm" novalidate>
             <label for="messageInput">Message</label>
-            <input
+            <textarea
               id="messageInput"
               name="message"
               autocomplete="off"
               maxlength="26"
-              pattern="\S{1,26}"
               placeholder=""
+              rows="1"
+              spellcheck="false"
               required
-            />
+            ></textarea>
             <span class="typing-caret" id="typingCaret" aria-hidden="true"></span>
             <button id="sendButton" type="submit">Send</button>
           </form>
@@ -819,12 +872,24 @@
         "rerouting node...",
         "masking origin...",
       ];
+      const placeholders = [
+        "leave no trace",
+        "transmit anonymously",
+        "encrypted relay ready",
+        "drop message",
+      ];
+      const transmitSteps = [
+        "encrypting payload...",
+        "routing packet...",
+        "transmitting...",
+      ];
       let audioContext;
       let lastMissionAlertAt = 0;
       let currentStatusMode = "";
       let logTimer;
       let logTypingTimer;
       let dropsTodayCount = null;
+      let placeholderIndex = 0;
 
       const isConfigured =
         SUPABASE_URL.startsWith("https://") &&
@@ -887,6 +952,12 @@
         panel.classList.toggle("is-active", hasText);
         sendButton.classList.toggle("has-text", hasText);
         setStatusMode(hasText ? "active" : "idle");
+      };
+
+      const updatePlaceholder = () => {
+        if (input.value) return;
+        input.placeholder = placeholders[placeholderIndex % placeholders.length];
+        placeholderIndex += 1;
       };
 
       const getMissionReply = (message) => {
@@ -1042,6 +1113,26 @@
         typeNext();
       };
 
+      const autoExpandInput = () => {
+        input.style.height = "auto";
+        input.style.height = `${Math.min(input.scrollHeight, 104)}px`;
+      };
+
+      const runTransmitSequence = async () => {
+        for (const step of transmitSteps) {
+          setFeedback(step, "is-muted");
+          showTerminalLog(step);
+          await wait(380);
+        }
+      };
+
+      const runSendBurst = () => {
+        sendButton.classList.remove("is-burst");
+        void sendButton.offsetWidth;
+        sendButton.classList.add("is-burst");
+        setTimeout(() => sendButton.classList.remove("is-burst"), 700);
+      };
+
       const scheduleTerminalLog = () => {
         const delay = 2600 + Math.random() * 3400;
         logTimer = setTimeout(() => {
@@ -1107,6 +1198,11 @@
         const isSingleCharacter = event.key.length === 1;
         const hasRoom = input.value.length < 26 || input.selectionStart !== input.selectionEnd;
 
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          return;
+        }
+
         if (isSingleCharacter && !/\s/.test(event.key) && hasRoom) {
           playTypewriterClick();
         }
@@ -1114,6 +1210,7 @@
 
       input.addEventListener("input", () => {
         input.value = input.value.replace(/\s/g, "").slice(0, 26);
+        autoExpandInput();
         updateCaret();
         updateActivityState();
       });
@@ -1136,8 +1233,11 @@
       window.addEventListener("resize", updateCaret);
       updateMilitaryClock();
       setInterval(updateMilitaryClock, 1000);
+      updatePlaceholder();
+      setInterval(updatePlaceholder, 3200);
       updateReceipt();
       updateActivityState();
+      autoExpandInput();
       updateResetTimer();
       setInterval(updateResetTimer, 1000);
       loadDropStats();
@@ -1171,10 +1271,9 @@
         }
 
         sendButton.disabled = true;
+        input.disabled = true;
         panel.classList.add("is-sending");
-        setFeedback("TRANSMITTING...", "is-muted");
-        updateReceipt();
-        await wait(1000);
+        await runTransmitSequence();
 
         try {
           const { data, error } = await client.rpc("submit_drop", {
@@ -1194,12 +1293,15 @@
           }
 
           input.value = "";
+          autoExpandInput();
           updateCaret();
           updateActivityState();
           markDeviceLimitUsed();
           updateResetTimer();
           setDropsToday((dropsTodayCount ?? 0) + 1);
           loadDropStats();
+          updateReceipt();
+          runSendBurst();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
@@ -1212,6 +1314,7 @@
           }
         } finally {
           sendButton.disabled = false;
+          input.disabled = false;
           panel.classList.remove("is-sending");
         }
       });
