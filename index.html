@@ -652,28 +652,7 @@
         return `${remainder}s`;
       };
 
-      const getMstWindow = () => {
-        const now = new Date();
-        const mstNow = new Date(now.getTime() - 7 * 60 * 60 * 1000);
-        const windowKey = [
-          mstNow.getUTCFullYear(),
-          String(mstNow.getUTCMonth() + 1).padStart(2, "0"),
-          String(mstNow.getUTCDate()).padStart(2, "0"),
-          String(mstNow.getUTCHours()).padStart(2, "0"),
-        ].join("-");
-        const nextMstHour = Date.UTC(
-          mstNow.getUTCFullYear(),
-          mstNow.getUTCMonth(),
-          mstNow.getUTCDate(),
-          mstNow.getUTCHours() + 1,
-          0,
-          0
-        );
-        const resetAt = nextMstHour + 7 * 60 * 60 * 1000;
-        const resetSeconds = Math.max(Math.ceil((resetAt - now.getTime()) / 1000), 0);
-
-        return { windowKey, resetSeconds };
-      };
+      const rollingLimitMs = 60 * 60 * 1000;
 
       const getDeviceLimit = () => {
         try {
@@ -684,16 +663,16 @@
       };
 
       const markDeviceLimitUsed = () => {
-        const { windowKey, resetSeconds } = getMstWindow();
-        localStorage.setItem(deviceLimitKey, JSON.stringify({ windowKey, resetSeconds }));
+        localStorage.setItem(deviceLimitKey, JSON.stringify({ sentAt: Date.now() }));
       };
 
       const getDeviceLimitIssue = () => {
-        const currentWindow = getMstWindow();
-        const savedWindow = getDeviceLimit();
+        const sentAt = Number(getDeviceLimit().sentAt) || 0;
+        const resetAt = sentAt + rollingLimitMs;
+        const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
-        if (savedWindow.windowKey === currentWindow.windowKey) {
-          return `Limit reached. One message per device per MST hour. Try again in ${formatDuration(currentWindow.resetSeconds)}.`;
+        if (resetSeconds > 0) {
+          return `Limit reached. One message per device per rolling hour. Try again in ${formatDuration(resetSeconds)}.`;
         }
 
         return "";
@@ -823,7 +802,7 @@
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
               setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
             } else {
-              setFeedback(`MSG sent - next MST hour in ${formatDuration(data.reset_seconds)}`);
+              setFeedback(`MSG sent - next message in ${formatDuration(data.reset_seconds)}`);
             }
           } else {
             setFeedback("MSG sent");

@@ -44,11 +44,8 @@ declare
   v_reset_seconds int;
   v_device_limit int := 1;
   v_ip_limit int := 1;
-  v_mountain_now timestamp;
-  v_window_start_local timestamp;
-  v_window_end_local timestamp;
-  v_window_start timestamptz;
-  v_window_end timestamptz;
+  v_window interval := interval '1 hour';
+  v_reset_at timestamptz;
 begin
   p_message := upper(trim(p_message));
 
@@ -74,32 +71,31 @@ begin
     'unknown'
   );
   v_ip_hash := md5(trim(v_ip));
-  v_mountain_now := timezone('MST', now());
-  v_window_start_local := date_trunc('hour', v_mountain_now);
-  v_window_end_local := v_window_start_local + interval '1 hour';
-  v_window_start := v_window_start_local at time zone 'MST';
-  v_window_end := v_window_end_local at time zone 'MST';
 
   select count(*)
     into v_device_count
     from public.drops
    where client_hash = v_client_hash
-     and created_at >= v_window_start
-     and created_at < v_window_end;
+     and created_at >= now() - v_window;
 
   select count(*)
     into v_ip_count
     from public.drops
    where ip_hash = v_ip_hash
-     and created_at >= v_window_start
-     and created_at < v_window_end;
+     and created_at >= now() - v_window;
 
-  v_reset_seconds := greatest(ceil(extract(epoch from (v_window_end - now())))::int, 0);
+  select min(created_at + v_window)
+    into v_reset_at
+    from public.drops
+   where (client_hash = v_client_hash or ip_hash = v_ip_hash)
+     and created_at >= now() - v_window;
+
+  v_reset_seconds := greatest(ceil(extract(epoch from (coalesce(v_reset_at, now() + v_window) - now())))::int, 0);
 
   if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Limit reached. One message per device and IP per MST hour.',
+      'message', 'Limit reached. One message per device and IP per rolling hour.',
       'device_remaining', 0,
       'reset_seconds', v_reset_seconds
     );
