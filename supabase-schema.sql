@@ -142,7 +142,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_drops_today int;
+  v_drops_received int;
   v_denver_now timestamp;
   v_window_start_local timestamp;
   v_window_end_local timestamp;
@@ -161,13 +161,14 @@ begin
   v_window_end := v_window_end_local at time zone 'America/Denver';
 
   select count(*)
-    into v_drops_today
+    into v_drops_received
     from public.drops
    where created_at >= v_window_start
      and created_at < v_window_end;
 
   return jsonb_build_object(
-    'drops_today', v_drops_today,
+    'drops_today', v_drops_received,
+    'drops_received', v_drops_received,
     'window_start', v_window_start,
     'window_end', v_window_end
   );

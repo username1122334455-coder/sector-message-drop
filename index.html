@@ -524,15 +524,6 @@
         animation: timerFlicker 2.4s steps(2) infinite;
       }
 
-      .limit-note {
-        margin: -4px 0 0;
-        color: rgba(255, 241, 223, 0.62);
-        font-family: "Share Tech Mono", monospace;
-        font-size: 0.66rem;
-        line-height: 1.25;
-        text-transform: uppercase;
-      }
-
       .mission-alert {
         position: fixed;
         right: clamp(14px, 4vw, 28px);
@@ -799,11 +790,10 @@
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="stats-row" aria-label="Terminal activity stats">
-            <span id="dropsToday">-- DROPS TODAY</span>
+            <span id="dropsToday">-- DROPS RECEIVED</span>
             <span id="usersOnline">0 USERS ONLINE</span>
             <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
-          <p class="limit-note">2 messages per hour per device/IP when recognizable</p>
         </section>
       </section>
     </main>
@@ -846,7 +836,7 @@
         "local timer active...",
       ];
       const placeholders = [
-        "drop message",
+        "DROP MSG",
       ];
       const transmitSteps = [
         "checking window...",
@@ -1008,7 +998,7 @@
 
       const setDropsToday = (count) => {
         dropsTodayCount = Math.max(Number(count) || 0, 0);
-        dropsToday.textContent = `${dropsTodayCount} DROPS TODAY`;
+        dropsToday.textContent = `${dropsTodayCount} DROPS RECEIVED`;
       };
 
       const loadDropStats = async () => {
@@ -1019,7 +1009,7 @@
           if (error) return;
           setDropsToday(data?.drops_today);
         } catch {
-          dropsToday.textContent = "-- DROPS TODAY";
+          dropsToday.textContent = "-- DROPS RECEIVED";
         }
       };
 
@@ -1255,7 +1245,6 @@
           updateActivityState();
           markDeviceLimitUsed();
           updateResetTimer();
-          setDropsToday((dropsTodayCount ?? 0) + 1);
           loadDropStats();
           runSendBurst();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
