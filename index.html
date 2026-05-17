@@ -344,11 +344,12 @@
       button {
         flex: 0 0 120px;
         border: 2px solid rgba(255, 209, 102, 0.9);
-        background: linear-gradient(180deg, #ffd166, #ff8a3d);
-        color: var(--ink);
+        background: linear-gradient(180deg, #ffe08a, #ff9f55);
+        color: #1b0711;
         cursor: pointer;
-        font-family: "Bangers", "Arial Black", Impact, sans-serif;
-        font-size: 1.55rem;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 1.08rem;
+        font-weight: 700;
         box-shadow: 0 6px 0 #8f3b1f, 0 0 22px rgba(255, 138, 61, 0.25);
         transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
       }
@@ -566,8 +567,8 @@
               id="messageInput"
               name="message"
               autocomplete="off"
-              maxlength="15"
-              pattern="\S{1,15}"
+              maxlength="26"
+              pattern="\S{1,26}"
               placeholder=""
               required
             />
@@ -581,7 +582,7 @@
     </main>
 
     <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
-      <p class="mission-alert__label">mission alert</p>
+      <p class="mission-alert__label">coded return</p>
       <p class="mission-alert__text" id="missionAlertText"></p>
     </aside>
 
@@ -664,7 +665,7 @@
 
       const validate = (value) => {
         if (!value) return "Enter a codeword.";
-        if (value.length > 15) return "Codeword max is 15 characters.";
+        if (value.length > 26) return "Codeword max is 26 characters.";
         if (/\s/.test(value)) return "No spaces in the drop.";
         return "";
       };
@@ -699,7 +700,7 @@
         const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
         if (resetSeconds > 0) {
-          return `Limit reached. One message per device per rolling hour. Try again in ${formatDuration(resetSeconds)}.`;
+          return "Limit reached. One message per hour. Try again later.";
         }
 
         return "";
@@ -710,7 +711,7 @@
         const fontSize = parseFloat(inputStyles.fontSize);
         const leftPadding = parseFloat(inputStyles.paddingLeft);
         const characterWidth = fontSize * 0.62;
-        const visibleLength = Math.min(input.value.length, 15);
+        const visibleLength = Math.min(input.value.length, 26);
         typingCaret.style.setProperty("--caret-left", `${leftPadding + visibleLength * characterWidth}px`);
       };
 
@@ -759,7 +760,7 @@
 
       input.addEventListener("keydown", (event) => {
         const isSingleCharacter = event.key.length === 1;
-        const hasRoom = input.value.length < 15 || input.selectionStart !== input.selectionEnd;
+        const hasRoom = input.value.length < 26 || input.selectionStart !== input.selectionEnd;
 
         if (isSingleCharacter && !/\s/.test(event.key) && hasRoom) {
           playTypewriterClick();
@@ -767,7 +768,7 @@
       });
 
       input.addEventListener("input", () => {
-        input.value = input.value.replace(/\s/g, "").slice(0, 15);
+        input.value = input.value.replace(/\s/g, "").slice(0, 26);
         updateCaret();
         setFeedback("Ready for drop.");
       });
@@ -818,8 +819,7 @@
           }
 
           if (!data?.ok) {
-            const resetText = data?.reset_seconds ? ` Try again in ${formatDuration(data.reset_seconds)}.` : "";
-            setFeedback(`${data?.message || "Limit reached."}${resetText}`, "is-error");
+            setFeedback(data?.message || "Limit reached. Try again later.", "is-error");
             return;
           }
 
@@ -831,7 +831,7 @@
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
               setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
             } else {
-              setFeedback(`MSG sent - next message in ${formatDuration(data.reset_seconds)}`);
+              setFeedback("MSG sent - one message per hour");
             }
           } else {
             setFeedback("MSG sent");

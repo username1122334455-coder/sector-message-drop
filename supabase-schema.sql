@@ -5,7 +5,7 @@ create table if not exists public.drops (
   ip_hash text,
   created_at timestamptz not null default now(),
   constraint drops_message_format check (
-    char_length(message) between 1 and 15
+    char_length(message) between 1 and 26
     and message !~ '\s'
   )
 );
@@ -51,12 +51,12 @@ begin
 
   if p_message is null
     or char_length(p_message) = 0
-    or char_length(p_message) > 15
+    or char_length(p_message) > 26
     or p_message ~ '\s'
   then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Message must be 1-15 characters with no spaces.',
+      'message', 'Message must be 1-26 characters with no spaces.',
       'device_remaining', 0,
       'reset_seconds', 0
     );
@@ -95,7 +95,7 @@ begin
   if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Limit reached. One message per device and IP per rolling hour.',
+      'message', 'Limit reached. One message per hour. Try again later.',
       'device_remaining', 0,
       'reset_seconds', v_reset_seconds
     );
