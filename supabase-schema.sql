@@ -48,6 +48,7 @@ declare
   v_window_start_at timestamptz;
   v_window_end_at timestamptz;
   v_local_hour int;
+  v_window_ends_label text;
 begin
   p_message := upper(trim(p_message));
 
@@ -60,7 +61,8 @@ begin
       'ok', false,
       'message', 'Message must be 1-15 characters with no spaces.',
       'device_remaining', 0,
-      'ip_remaining', 0
+      'ip_remaining', 0,
+      'window_ends_label', null
     );
   end if;
 
@@ -81,7 +83,8 @@ begin
       'ok', false,
       'message', 'Drops are closed until 10AM Mountain Time.',
       'device_remaining', 0,
-      'ip_remaining', 0
+      'ip_remaining', 0,
+      'window_ends_label', '10AM MT'
     );
   end if;
 
@@ -98,6 +101,7 @@ begin
 
   v_window_start_at := v_window_start_local at time zone 'America/Denver';
   v_window_end_at := v_window_end_local at time zone 'America/Denver';
+  v_window_ends_label := to_char(v_window_end_local, 'FMHH12AM') || ' MT';
 
   select count(*)
     into v_device_count
@@ -118,7 +122,8 @@ begin
       'ok', false,
       'message', 'IP limit reached for this Mountain Time window.',
       'device_remaining', greatest(2 - v_device_count, 0),
-      'ip_remaining', 0
+      'ip_remaining', 0,
+      'window_ends_label', v_window_ends_label
     );
   end if;
 
@@ -127,7 +132,8 @@ begin
       'ok', false,
       'message', 'Device limit reached for this Mountain Time window.',
       'device_remaining', 0,
-      'ip_remaining', greatest(1 - v_ip_count, 0)
+      'ip_remaining', greatest(1 - v_ip_count, 0),
+      'window_ends_label', v_window_ends_label
     );
   end if;
 
@@ -141,7 +147,8 @@ begin
     'ok', true,
     'message', 'Drop received.',
     'device_remaining', v_device_remaining,
-    'ip_remaining', v_ip_remaining
+    'ip_remaining', v_ip_remaining,
+    'window_ends_label', v_window_ends_label
   );
 end;
 $$;

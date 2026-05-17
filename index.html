@@ -652,7 +652,9 @@
 
           input.value = "";
           updateCaret();
-          setFeedback("MSG sent");
+          setFeedback(
+            `MSG sent - ${data.device_remaining === 1 ? "one" : data.device_remaining} remaining until ${data.window_ends_label || "window ends"}`
+          );
         } finally {
           sendButton.disabled = false;
         }
