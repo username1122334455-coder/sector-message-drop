@@ -583,6 +583,7 @@
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
       const clientIdKey = "sector-message-drop-client-id";
+      const deviceLimitKey = "sector-message-drop-device-window";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "sector", reply: "ACCESS GRANTED" },
@@ -651,6 +652,53 @@
         if (minutes && remainder) return `${minutes}m ${remainder}s`;
         if (minutes) return `${minutes}m`;
         return `${remainder}s`;
+      };
+
+      const getMstWindow = () => {
+        const now = new Date();
+        const mstNow = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+        const windowKey = [
+          mstNow.getUTCFullYear(),
+          String(mstNow.getUTCMonth() + 1).padStart(2, "0"),
+          String(mstNow.getUTCDate()).padStart(2, "0"),
+          String(mstNow.getUTCHours()).padStart(2, "0"),
+        ].join("-");
+        const nextMstHour = Date.UTC(
+          mstNow.getUTCFullYear(),
+          mstNow.getUTCMonth(),
+          mstNow.getUTCDate(),
+          mstNow.getUTCHours() + 1,
+          0,
+          0
+        );
+        const resetAt = nextMstHour + 7 * 60 * 60 * 1000;
+        const resetSeconds = Math.max(Math.ceil((resetAt - now.getTime()) / 1000), 0);
+
+        return { windowKey, resetSeconds };
+      };
+
+      const getDeviceLimit = () => {
+        try {
+          return JSON.parse(localStorage.getItem(deviceLimitKey) || "{}");
+        } catch {
+          return {};
+        }
+      };
+
+      const markDeviceLimitUsed = () => {
+        const { windowKey, resetSeconds } = getMstWindow();
+        localStorage.setItem(deviceLimitKey, JSON.stringify({ windowKey, resetSeconds }));
+      };
+
+      const getDeviceLimitIssue = () => {
+        const currentWindow = getMstWindow();
+        const savedWindow = getDeviceLimit();
+
+        if (savedWindow.windowKey === currentWindow.windowKey) {
+          return `Limit reached. One message per device per MST hour. Try again in ${formatDuration(currentWindow.resetSeconds)}.`;
+        }
+
+        return "";
       };
 
       const updateCaret = () => {
@@ -734,6 +782,12 @@
           return;
         }
 
+        const deviceLimitIssue = getDeviceLimitIssue();
+        if (deviceLimitIssue) {
+          setFeedback(deviceLimitIssue, "is-error");
+          return;
+        }
+
         const missionReply = getMissionReply(value);
         if (missionReply) showMissionAlert(missionReply);
 
@@ -765,6 +819,7 @@
 
           input.value = "";
           updateCaret();
+          markDeviceLimitUsed();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
