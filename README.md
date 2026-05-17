@@ -6,8 +6,8 @@ Anonymous Supabase-backed message drop website.
 
 - Stores messages in Supabase instead of browser-only local storage.
 - Allows anonymous users to send messages without accounts.
-- Limits each anonymous browser/device token to 2 drops per 3 minutes 30 seconds.
-- Limits each IP address to 2 drops per 3 minutes 30 seconds.
+- Limits each anonymous browser/device token to 1 drop per 3 hours 30 minutes.
+- Limits each IP address to 1 drop per 3 hours 30 minutes.
 - After a successful drop, the page shows the remaining device count and how much time remains in the cooldown window.
 - Each message must be 1-15 characters with no spaces.
 

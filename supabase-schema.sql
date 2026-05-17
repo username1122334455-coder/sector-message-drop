@@ -43,7 +43,7 @@ declare
   v_device_remaining int;
   v_reset_at timestamptz;
   v_reset_seconds int;
-  v_window interval := interval '3 minutes 30 seconds';
+  v_window interval := interval '3 hours 30 minutes';
 begin
   p_message := upper(trim(p_message));
 
@@ -90,7 +90,7 @@ begin
 
   v_reset_seconds := greatest(ceil(extract(epoch from (coalesce(v_reset_at, now() + v_window) - now())))::int, 0);
 
-  if v_device_count >= 2 or v_ip_count >= 2 then
+  if v_device_count >= 1 or v_ip_count >= 1 then
     return jsonb_build_object(
       'ok', false,
       'message', 'Limit reached. Try again in ' || v_reset_seconds || ' seconds.',
@@ -102,13 +102,13 @@ begin
   insert into public.drops (message, client_hash, ip_hash)
   values (p_message, v_client_hash, v_ip_hash);
 
-  v_device_remaining := 1 - v_device_count;
+  v_device_remaining := 0;
 
   return jsonb_build_object(
     'ok', true,
     'message', 'Drop received.',
     'device_remaining', v_device_remaining,
-    'reset_seconds', 210
+    'reset_seconds', 12600
   );
 end;
 $$;

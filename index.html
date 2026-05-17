@@ -664,8 +664,12 @@
           input.value = "";
           updateCaret();
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
-            const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
-            setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
+            if (data.device_remaining > 0) {
+              const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
+              setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
+            } else {
+              setFeedback(`MSG sent - next in ${formatDuration(data.reset_seconds)}`);
+            }
           } else {
             setFeedback("MSG sent");
           }
