@@ -524,87 +524,13 @@
         animation: timerFlicker 2.4s steps(2) infinite;
       }
 
-      .pgp-panel {
-        border: 1px solid rgba(255, 138, 61, 0.26);
-        border-radius: 8px;
-        background: rgba(0, 0, 0, 0.18);
-        color: rgba(255, 241, 223, 0.78);
+      .pgp-available {
+        margin: -2px 0 0;
+        color: rgba(255, 209, 102, 0.72);
         font-family: "Share Tech Mono", monospace;
         font-size: 0.68rem;
-        line-height: 1.35;
+        line-height: 1.2;
         text-transform: uppercase;
-      }
-
-      .pgp-panel summary {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px;
-        padding: 10px 12px;
-        cursor: pointer;
-        list-style: none;
-      }
-
-      .pgp-panel summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .pgp-title {
-        color: var(--accent-2);
-      }
-
-      .pgp-copy {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 0 12px 10px;
-      }
-
-      .pgp-copy button {
-        flex: 0 0 auto;
-        height: 34px;
-        padding: 0 10px;
-        border-width: 1px;
-        font-size: 0.64rem;
-        box-shadow: 0 3px 0 #8f3b1f, 0 0 14px rgba(255, 138, 61, 0.18);
-      }
-
-      .pgp-copy button:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 0 #8f3b1f, 0 0 18px rgba(255, 138, 61, 0.32);
-      }
-
-      .copy-status {
-        align-self: center;
-        color: var(--accent-2);
-        opacity: 0;
-        transition: opacity 180ms ease;
-      }
-
-      .copy-status.is-visible {
-        opacity: 1;
-      }
-
-      .pgp-keybox {
-        max-height: 160px;
-        margin: 0 12px 10px;
-        overflow: auto;
-        padding: 10px;
-        border: 1px solid rgba(255, 209, 102, 0.18);
-        border-radius: 6px;
-        background: rgba(0, 0, 0, 0.32);
-        color: rgba(255, 209, 102, 0.78);
-        font-size: 0.6rem;
-        line-height: 1.35;
-        text-transform: none;
-        white-space: pre-wrap;
-      }
-
-      .pgp-warning {
-        margin: -4px 0 0;
-        color: rgba(255, 241, 223, 0.62);
-        font-family: "Share Tech Mono", monospace;
-        font-size: 0.65rem;
-        line-height: 1.35;
       }
 
       .mission-alert {
@@ -877,24 +803,7 @@
             <span id="usersOnline">0 USERS ONLINE</span>
             <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
-          <details class="pgp-panel">
-            <summary>
-              <span>
-                <span class="pgp-title">PGP PUBLIC KEY</span><br />
-                PGP AVAILABLE -- ENCRYPT BEFORE DROP<br />
-                KEY ROTATED: 2026-05-17
-              </span>
-              <span aria-hidden="true">+</span>
-            </summary>
-            <div class="pgp-copy">
-              <button type="button" id="copyPgpKey">Copy public key</button>
-              <span class="copy-status" id="copyStatus" aria-live="polite">copied to clipboard</span>
-            </div>
-            <pre class="pgp-keybox" id="pgpPublicKey"></pre>
-          </details>
-          <p class="pgp-warning">
-            PGP protects message content only when the message is encrypted before sending. Metadata may still be visible.
-          </p>
+          <p class="pgp-available">PGP AVAILABLE</p>
         </section>
       </section>
     </main>
@@ -921,9 +830,6 @@
       const dropsToday = document.querySelector("#dropsToday");
       const usersOnline = document.querySelector("#usersOnline");
       const resetTimer = document.querySelector("#resetTimer");
-      const pgpPublicKeyBox = document.querySelector("#pgpPublicKey");
-      const copyPgpKeyButton = document.querySelector("#copyPgpKey");
-      const copyStatus = document.querySelector("#copyStatus");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
       const clientIdKey = "sector-message-drop-client-id";
@@ -947,24 +853,6 @@
         "preparing drop...",
         "sending...",
       ];
-      const pgpPublicKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
-
-xsBNBGoKEVcBCACyY2fAcBxXECr7TuLdaHntay4HBgXNMjZb/HmE/JXvDRnKSkKw
-fW4EJuv3q1YWOOlCu+zXvkK9YLwZV7ZVUWQWKS+QXav/cZuAMd6wUyeaKQYmNRgr
-8V/FZMXgUfPeUa1/Vd76fgBqxsQ8/Vr4oWwwIjmZ4nsf9scAF9qOJZj7aLQeSze1
-72epkEFfjwL1voPsa2ndQlY3TUzWa0G3ybtRthGta/tOug6St68kwJxc2bayyoGt
-PmC5NFjWTKbMRjSdzQXAnU6MAjhNnn3ZkqK3b6b7DbI5O/xlpQmJajr5ZCQ5BR4g
-bdVcZZ0Vsimj5mu1h6U3Txcv18WkAOe4tUthABEBAAHNM0Ryb3AgTWVzc2FnZSBN
-YW51YWwgRW5jcnlwdGlvbiA8ZHJvcEBleGFtcGxlLmxvY2FsPsLAggQTAQgALAUC
-agoRVwIbDAILCQIVCAIWAgIeARYhBEzTaW4dIdff1484QAvXVLJnWkK2AAoJEAvX
-VLJnWkK2zQQIAKpxMBmnWcOk5+Z9Ja40CMjUiieXHG0IK8oUJw7qLq12e+8s8CCZ
-B9EnhaSGnECFYW3XnwD0MUlljtAlLAHyt5mzIUq93ko9KnrYfjZrRFctOENQwe15
-qE4I/AOT5kEr78cy1dvncocDqcTNbclA+DRE3nTdUKq+zAi1QaJK9/fbpaX7OV04
-4atlkgZzp4jFmW0fUadCw+FZ8BHJVwQyhau+A5gWE7y01ytKZQFhxUPdoXCP7PuQ
-7zNhSu6dElOmc2vQqpiUayIhP0pUmHW5ZUy9sEVe6/GwLa0sAzE71OBbxhV8yo0t
-aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
-=D1hW
------END PGP PUBLIC KEY BLOCK-----`;
       let audioContext;
       let lastMissionAlertAt = 0;
       let logTimer;
@@ -986,25 +874,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       };
 
       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-      const copyText = async (text) => {
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          const fallback = document.createElement("textarea");
-          fallback.value = text;
-          fallback.setAttribute("readonly", "");
-          fallback.style.position = "fixed";
-          fallback.style.opacity = "0";
-          document.body.append(fallback);
-          fallback.select();
-          document.execCommand("copy");
-          fallback.remove();
-        }
-
-        copyStatus.classList.add("is-visible");
-        setTimeout(() => copyStatus.classList.remove("is-visible"), 1600);
-      };
 
       const updateMilitaryClock = () => {
         const now = new Date();
@@ -1303,8 +1172,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
         updateActivityState();
       });
 
-      copyPgpKeyButton.addEventListener("click", () => copyText(pgpPublicKey));
-
       consoleShell.addEventListener("pointermove", (event) => {
         const rect = consoleShell.getBoundingClientRect();
         const x = (event.clientX - rect.left) / rect.width;
@@ -1323,7 +1190,6 @@ aaJ/4JqBvGRYQ7VV3X7Q/OYSG+p3m9gR2t8=
       window.addEventListener("resize", updateCaret);
       updateMilitaryClock();
       setInterval(updateMilitaryClock, 1000);
-      pgpPublicKeyBox.textContent = pgpPublicKey;
       updatePlaceholder();
       setInterval(updatePlaceholder, 3200);
       updateActivityState();
