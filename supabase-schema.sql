@@ -59,6 +59,7 @@ declare
   v_global_limit int := 20;
   v_window interval := interval '1 hour';
   v_reset_at timestamptz;
+  v_denver_hour int;
 begin
   p_message := upper(trim(p_message));
 
@@ -70,6 +71,17 @@ begin
     return jsonb_build_object(
       'ok', false,
       'message', 'Message must be 1-26 characters with no spaces.',
+      'device_remaining', 0,
+      'reset_seconds', 0
+    );
+  end if;
+
+  v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
+
+  if v_denver_hour >= 22 or v_denver_hour < 8 then
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.',
       'device_remaining', 0,
       'reset_seconds', 0
     );

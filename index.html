@@ -436,6 +436,13 @@
         opacity: 0.68;
       }
 
+      .panel.is-offline textarea,
+      .panel.is-offline button {
+        cursor: not-allowed;
+        filter: grayscale(0.35) brightness(0.82);
+        opacity: 0.62;
+      }
+
       button:hover:not(:disabled) {
         transform: translateY(-2px) rotate(-1deg);
         box-shadow: 0 8px 0 #8f3b1f, 0 0 30px rgba(255, 138, 61, 0.42);
@@ -853,6 +860,8 @@
       let logTimer;
       let logTypingTimer;
       let placeholderIndex = 0;
+      let dropWindowClosed = false;
+      let isSending = false;
 
       const isConfigured =
         SUPABASE_URL.startsWith("https://") &&
@@ -884,6 +893,36 @@
         const hasText = input.value.length > 0;
         panel.classList.toggle("is-active", hasText);
         sendButton.classList.toggle("has-text", hasText);
+      };
+
+      const getDenverHour = () => {
+        const hourText = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Denver",
+          hour: "2-digit",
+          hour12: false,
+        }).format(new Date());
+        const hour = Number(hourText);
+        return hour === 24 ? 0 : hour;
+      };
+
+      const isDropWindowClosed = () => {
+        const hour = getDenverHour();
+        return hour >= 22 || hour < 8;
+      };
+
+      const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.";
+
+      const updateDropWindowState = () => {
+        dropWindowClosed = isDropWindowClosed();
+        input.disabled = dropWindowClosed || isSending;
+        sendButton.disabled = dropWindowClosed || isSending;
+        panel.classList.toggle("is-offline", dropWindowClosed);
+
+        if (dropWindowClosed) {
+          setFeedback(closedWindowMessage, "is-error");
+        } else if (feedback.textContent === closedWindowMessage) {
+          setFeedback("");
+        }
       };
 
       const updatePlaceholder = () => {
@@ -1173,12 +1212,17 @@
       autoExpandInput();
       updateResetTimer();
       setInterval(updateResetTimer, 1000);
+      updateDropWindowState();
+      setInterval(updateDropWindowState, 30000);
       initPresence();
       scheduleTerminalLog();
       updateCaret();
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
+
+        updateDropWindowState();
+        if (dropWindowClosed) return;
 
         const value = input.value.trim();
         const issue = validate(value);
@@ -1202,8 +1246,8 @@
           return;
         }
 
-        sendButton.disabled = true;
-        input.disabled = true;
+        isSending = true;
+        updateDropWindowState();
         panel.classList.add("is-sending");
         await runTransmitSequence();
 
@@ -1243,9 +1287,9 @@
             setFeedback("MSG sent");
           }
         } finally {
-          sendButton.disabled = false;
-          input.disabled = false;
+          isSending = false;
           panel.classList.remove("is-sending");
+          updateDropWindowState();
         }
       });
     </script>
