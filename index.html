@@ -534,12 +534,12 @@
       }
 
       .mission-alert {
-        position: fixed;
-        right: clamp(14px, 4vw, 28px);
-        top: clamp(170px, 28vh, 260px);
+        position: absolute;
+        top: clamp(42px, 8vw, 58px);
+        left: clamp(16px, 4vw, 52px);
         z-index: 6;
-        width: min(100% - 28px, 340px);
-        padding: 16px 18px;
+        width: min(calc(100% - 190px), 420px);
+        padding: 12px 16px;
         border: 2px solid rgba(255, 209, 102, 0.9);
         border-radius: 8px;
         background:
@@ -550,7 +550,7 @@
           inset 0 0 18px rgba(255, 209, 102, 0.08);
         opacity: 0;
         pointer-events: none;
-        transform: translateY(16px) scale(0.96);
+        transform: translateY(-10px) scale(0.98);
       }
 
       .mission-alert.is-visible {
@@ -777,9 +777,10 @@
         }
 
         .mission-alert {
-          top: auto;
-          right: clamp(14px, 4vw, 28px);
-          bottom: clamp(14px, 4vw, 28px);
+          top: clamp(44px, 12vw, 58px);
+          right: clamp(16px, 4vw, 28px);
+          left: clamp(16px, 4vw, 28px);
+          width: auto;
         }
       }
     </style>
@@ -791,6 +792,10 @@
           <div class="terminal-head">
             <time class="clock-chip" id="militaryClock" aria-label="Current 24-hour time">00:00:00</time>
           </div>
+          <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
+            <p class="mission-alert__label">signal reply</p>
+            <p class="mission-alert__text" id="missionAlertText"></p>
+          </aside>
           <form id="messageForm" novalidate>
             <label for="messageInput">Message</label>
             <textarea
@@ -816,11 +821,6 @@
         </section>
       </section>
     </main>
-
-    <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
-      <p class="mission-alert__label">signal reply</p>
-      <p class="mission-alert__text" id="missionAlertText"></p>
-    </aside>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
