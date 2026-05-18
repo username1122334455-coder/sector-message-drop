@@ -273,6 +273,40 @@
           inset 0 0 32px rgba(255, 138, 61, 0.12);
       }
 
+      .bulletin-board {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 209, 102, 0.45);
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgba(42, 15, 26, 0.92), rgba(14, 5, 15, 0.92)),
+          var(--panel-2);
+        box-shadow:
+          0 0 18px rgba(255, 138, 61, 0.16),
+          inset 0 0 16px rgba(255, 209, 102, 0.05);
+      }
+
+      .bulletin-board__label,
+      .bulletin-board__message {
+        margin: 0;
+        font-family: "Share Tech Mono", monospace;
+        text-transform: uppercase;
+      }
+
+      .bulletin-board__label {
+        color: var(--muted);
+        font-size: 0.66rem;
+        letter-spacing: 0.02em;
+      }
+
+      .bulletin-board__message {
+        color: var(--accent-2);
+        font-size: clamp(0.78rem, 2vw, 0.92rem);
+        line-height: 1.35;
+      }
+
       .panel.is-sending {
         animation: transmitPulse 1s ease;
       }
@@ -782,6 +816,10 @@
   <body>
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
+        <aside class="bulletin-board" aria-label="Bulletin board">
+          <p class="bulletin-board__label">bulletin board</p>
+          <p class="bulletin-board__message">hi i just made it to your locality want to see each other?</p>
+        </aside>
         <section class="panel" aria-label="Message input">
           <div class="terminal-head">
             <time class="clock-chip" id="militaryClock" aria-label="Current 24-hour time">00:00:00</time>
