@@ -92,6 +92,10 @@
         transition: transform 220ms ease, box-shadow 220ms ease;
       }
 
+      .console.is-offline {
+        filter: brightness(0.78) saturate(0.82);
+      }
+
       .console::before {
         display: block;
         position: absolute;
@@ -488,6 +492,11 @@
         cursor: not-allowed;
         filter: grayscale(0.35) brightness(0.82);
         opacity: 0.62;
+      }
+
+      .panel.is-offline .typing-caret {
+        animation: none;
+        opacity: 0;
       }
 
       button:hover:not(:disabled) {
@@ -985,6 +994,7 @@
         input.disabled = dropWindowClosed || isSending;
         sendButton.disabled = dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
+        consoleShell.classList.toggle("is-offline", dropWindowClosed);
 
         if (dropWindowClosed) {
           setFeedback(closedWindowMessage, "is-error");
