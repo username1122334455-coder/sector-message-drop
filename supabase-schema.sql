@@ -78,10 +78,10 @@ begin
 
   v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
 
-  if v_denver_hour >= 22 or v_denver_hour < 8 then
+  if v_denver_hour >= 23 or v_denver_hour < 9 then
     return jsonb_build_object(
       'ok', false,
-      'message', 'DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.',
+      'message', 'DROP CHANNEL OFFLINE. RETURNS AT 09:00.',
       'device_remaining', 0,
       'reset_seconds', 0
     );

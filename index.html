@@ -279,7 +279,9 @@
 
       .bulletin-board {
         display: grid;
-        gap: 8px;
+        grid-template-columns: minmax(76px, 0.22fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: stretch;
         margin-bottom: 14px;
         padding: 12px 14px;
         border: 1px solid rgba(255, 209, 102, 0.45);
@@ -290,6 +292,17 @@
         box-shadow:
           0 0 18px rgba(255, 138, 61, 0.16),
           inset 0 0 16px rgba(255, 209, 102, 0.05);
+      }
+
+      .bulletin-board__photo {
+        width: 100%;
+        min-height: 116px;
+        max-height: 164px;
+        border: 1px solid rgba(255, 209, 102, 0.36);
+        border-radius: 6px;
+        object-fit: cover;
+        object-position: 50% 32%;
+        box-shadow: 0 0 16px rgba(255, 138, 61, 0.16);
       }
 
       .bulletin-board__copy {
@@ -798,6 +811,17 @@
           grid-template-columns: 1fr;
         }
 
+        .bulletin-board {
+          grid-template-columns: 78px minmax(0, 1fr);
+          gap: 10px;
+          padding: 10px;
+        }
+
+        .bulletin-board__photo {
+          min-height: 118px;
+          max-height: 138px;
+        }
+
         .bulletin-board__message {
           font-size: 1rem;
           line-height: 1.08;
@@ -831,6 +855,7 @@
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
+          <img class="bulletin-board__photo" src="assets/bulletin-photo.png" alt="Bulletin portrait" />
           <div class="bulletin-board__copy">
             <p class="bulletin-board__message">🥂 Hey my dear, You're the reason I'm in such a good mood today. This will make you smile just like you make me smile. This is waiting just for you 👙 Let's keep this sacred, Sandra 🍑</p>
           </div>
@@ -959,10 +984,10 @@
 
       const isDropWindowClosed = () => {
         const hour = getDenverHour();
-        return hour >= 22 || hour < 8;
+        return hour >= 23 || hour < 9;
       };
 
-      const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.";
+      const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 09:00.";
 
       const updateDropWindowState = () => {
         dropWindowClosed = isDropWindowClosed();
