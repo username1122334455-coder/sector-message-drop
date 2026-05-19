@@ -80,6 +80,59 @@
         text-transform: uppercase;
       }
 
+      input {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid rgba(255, 138, 61, 0.58);
+        border-radius: 8px;
+        outline: none;
+        padding: 10px 12px;
+        background: #150811;
+        color: var(--accent-2);
+        font: inherit;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+      }
+
+      .login-panel {
+        display: grid;
+        gap: 12px;
+        width: min(100%, 420px);
+        margin: 18vh auto 0;
+        border: 1px solid rgba(255, 209, 102, 0.38);
+        border-radius: 8px;
+        padding: 18px;
+        background:
+          linear-gradient(145deg, rgba(50, 18, 30, 0.96), rgba(14, 5, 15, 0.98)),
+          var(--panel);
+        box-shadow:
+          0 0 24px rgba(255, 138, 61, 0.18),
+          inset 0 0 18px rgba(255, 209, 102, 0.06);
+      }
+
+      .login-panel h1 {
+        font-size: clamp(1.2rem, 5vw, 1.65rem);
+      }
+
+      .admin-shell.is-locked {
+        display: none;
+      }
+
+      .login-panel.is-unlocked {
+        display: none;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 8px;
+      }
+
       .grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -139,13 +192,16 @@
     </style>
   </head>
   <body>
-    <main>
+    <main class="admin-shell is-locked">
       <header>
         <div>
           <p class="muted">dropmmssgg.uk</p>
           <h1>Admin Counter</h1>
         </div>
-        <button id="refreshButton" type="button">Refresh</button>
+        <div class="header-actions">
+          <button id="refreshButton" type="button">Refresh</button>
+          <button id="logoutButton" type="button">Lock</button>
+        </div>
       </header>
 
       <section class="grid" aria-label="Website counters">
@@ -178,6 +234,23 @@
       <p class="status" id="status">loading counters...</p>
     </main>
 
+    <form class="login-panel" id="loginForm">
+      <div>
+        <p class="muted">restricted counter</p>
+        <h1>Admin Login</h1>
+      </div>
+      <label>
+        Username
+        <input id="adminUser" autocomplete="username" required />
+      </label>
+      <label>
+        Password
+        <input id="adminPassword" type="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit">Unlock</button>
+      <p class="status" id="loginStatus"></p>
+    </form>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
@@ -192,6 +265,16 @@
       const dropsCount = document.querySelector("#dropsCount");
       const status = document.querySelector("#status");
       const refreshButton = document.querySelector("#refreshButton");
+      const logoutButton = document.querySelector("#logoutButton");
+      const loginForm = document.querySelector("#loginForm");
+      const loginStatus = document.querySelector("#loginStatus");
+      const adminUser = document.querySelector("#adminUser");
+      const adminPassword = document.querySelector("#adminPassword");
+      const adminShell = document.querySelector("main");
+      const adminSessionKey = "drop-admin-unlocked";
+      const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
+      let statsTimer;
+      let presenceStarted = false;
 
       const setStatus = (message, isError = false) => {
         status.textContent = message;
@@ -200,6 +283,14 @@
 
       const setNumber = (element, value) => {
         element.textContent = new Intl.NumberFormat().format(Math.max(Number(value) || 0, 0));
+      };
+
+      const hashCredentials = async (username, password) => {
+        const bytes = new TextEncoder().encode(`${username}:${password}`);
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(digest))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
       };
 
       const loadStats = async () => {
@@ -221,6 +312,8 @@
       };
 
       const initPresence = () => {
+        if (presenceStarted) return;
+        presenceStarted = true;
         const channel = client.channel("drop-terminal-presence");
 
         channel
@@ -232,10 +325,44 @@
           .subscribe();
       };
 
+      const unlockAdmin = () => {
+        adminShell.classList.remove("is-locked");
+        loginForm.classList.add("is-unlocked");
+        sessionStorage.setItem(adminSessionKey, "true");
+        initPresence();
+        loadStats();
+        statsTimer ||= setInterval(loadStats, 15000);
+      };
+
+      const lockAdmin = () => {
+        sessionStorage.removeItem(adminSessionKey);
+        adminShell.classList.add("is-locked");
+        loginForm.classList.remove("is-unlocked");
+        adminPassword.value = "";
+      };
+
       refreshButton.addEventListener("click", loadStats);
-      initPresence();
-      loadStats();
-      setInterval(loadStats, 15000);
+      logoutButton.addEventListener("click", lockAdmin);
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        loginStatus.textContent = "checking...";
+
+        const hash = await hashCredentials(adminUser.value.trim(), adminPassword.value);
+
+        if (hash === credentialHash) {
+          loginStatus.textContent = "";
+          unlockAdmin();
+        } else {
+          loginStatus.textContent = "access denied";
+          loginStatus.className = "status is-error";
+        }
+      });
+
+      if (sessionStorage.getItem(adminSessionKey) === "true") {
+        unlockAdmin();
+      } else {
+        lockAdmin();
+      }
     </script>
   </body>
 </html>
