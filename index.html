@@ -948,9 +948,14 @@
         ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
         : null;
 
-      const setFeedback = (message, type = "") => {
+      const setFeedback = (message, type = "", source = "") => {
         feedback.textContent = message;
         feedback.className = type ? `feedback ${type}` : "feedback";
+        if (source) {
+          feedback.dataset.source = source;
+        } else {
+          delete feedback.dataset.source;
+        }
       };
 
       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -982,12 +987,48 @@
         return hour === 24 ? 0 : hour;
       };
 
+      const getDenverSecondsSinceMidnight = () => {
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Denver",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).formatToParts(new Date());
+        const value = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
+        const hour = value("hour") === 24 ? 0 : value("hour");
+        return hour * 3600 + value("minute") * 60 + value("second");
+      };
+
       const isDropWindowClosed = () => {
         const hour = getDenverHour();
         return hour >= 23 || hour < 9;
       };
 
       const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 09:00.";
+      const openSecond = 9 * 3600;
+      const closeSecond = 23 * 3600;
+      const curfewNoticeWindow = 60 * 60;
+
+      const getCurfewNotice = () => {
+        const seconds = getDenverSecondsSinceMidnight();
+
+        if (seconds >= openSecond - curfewNoticeWindow && seconds < openSecond) {
+          return {
+            message: `DROP CHANNEL OPENS IN ${formatDuration(openSecond - seconds)}.`,
+            type: "is-muted",
+          };
+        }
+
+        if (seconds >= closeSecond - curfewNoticeWindow && seconds < closeSecond) {
+          return {
+            message: `DROP CHANNEL CLOSES IN ${formatDuration(closeSecond - seconds)}.`,
+            type: "is-muted",
+          };
+        }
+
+        return null;
+      };
 
       const updateDropWindowState = () => {
         dropWindowClosed = isDropWindowClosed();
@@ -995,10 +1036,13 @@
         sendButton.disabled = dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
         consoleShell.classList.toggle("is-offline", dropWindowClosed);
+        const curfewNotice = getCurfewNotice();
 
-        if (dropWindowClosed) {
-          setFeedback(closedWindowMessage, "is-error");
-        } else if (feedback.textContent === closedWindowMessage) {
+        if (curfewNotice) {
+          setFeedback(curfewNotice.message, curfewNotice.type, "curfew");
+        } else if (dropWindowClosed) {
+          setFeedback(closedWindowMessage, "is-error", "curfew");
+        } else if (feedback.dataset.source === "curfew") {
           setFeedback("");
         }
       };
