@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand+SC&family=Share+Tech+Mono&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@500;700&family=Patrick+Hand+SC&family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -275,7 +275,9 @@
 
       .bulletin-board {
         display: grid;
-        gap: 6px;
+        grid-template-columns: minmax(76px, 0.22fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: stretch;
         margin-bottom: 14px;
         padding: 12px 14px;
         border: 1px solid rgba(255, 209, 102, 0.45);
@@ -288,23 +290,43 @@
           inset 0 0 16px rgba(255, 209, 102, 0.05);
       }
 
+      .bulletin-board__photo {
+        width: 100%;
+        min-height: 116px;
+        max-height: 164px;
+        border: 1px solid rgba(255, 209, 102, 0.36);
+        border-radius: 6px;
+        object-fit: cover;
+        object-position: 50% 18%;
+        box-shadow: 0 0 16px rgba(255, 138, 61, 0.16);
+      }
+
+      .bulletin-board__copy {
+        display: grid;
+        align-content: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
       .bulletin-board__label,
       .bulletin-board__message {
         margin: 0;
-        font-family: "Share Tech Mono", monospace;
-        text-transform: uppercase;
       }
 
       .bulletin-board__label {
         color: var(--muted);
-        font-size: 0.66rem;
-        letter-spacing: 0.02em;
+        font-family: "Bangers", "Patrick Hand SC", cursive;
+        font-size: clamp(1.05rem, 2.8vw, 1.28rem);
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
       }
 
       .bulletin-board__message {
         color: var(--accent-2);
-        font-size: clamp(0.78rem, 2vw, 0.92rem);
-        line-height: 1.35;
+        font-family: "Caveat", cursive;
+        font-size: clamp(1.05rem, 2.8vw, 1.35rem);
+        line-height: 1.12;
+        text-transform: none;
       }
 
       .panel.is-sending {
@@ -789,6 +811,22 @@
           grid-template-columns: 1fr;
         }
 
+        .bulletin-board {
+          grid-template-columns: 78px minmax(0, 1fr);
+          gap: 10px;
+          padding: 10px;
+        }
+
+        .bulletin-board__photo {
+          min-height: 118px;
+          max-height: 138px;
+        }
+
+        .bulletin-board__message {
+          font-size: 1rem;
+          line-height: 1.08;
+        }
+
         .stats-row .timer {
           grid-column: auto;
           text-align: left;
@@ -817,8 +855,11 @@
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
-          <p class="bulletin-board__label">bulletin board</p>
-          <p class="bulletin-board__message">hi i just made it to your locality want to see each other?</p>
+          <img class="bulletin-board__photo" src="assets/bulletin-photo.png" alt="Bulletin portrait" />
+          <div class="bulletin-board__copy">
+            <p class="bulletin-board__label">bulletin board</p>
+            <p class="bulletin-board__message">Hello, adventurer! You've been a truly, remarkably memorable part of my internal musings since our chat. You're truly and unequivocally someone that makes my imagination fully ignite. I have a very firm belief that the spark we share could lead to something truly, beautifully unforgettable. I'm inclined to explore this &quot;something bizarre&quot; with you, if you're ready to break new ground. Sound off if you'd like to figure out what I truly mean.</p>
+          </div>
         </aside>
         <section class="panel" aria-label="Message input">
           <div class="terminal-head">
