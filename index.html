@@ -1144,6 +1144,7 @@
 
       const recordVisit = async () => {
         if (!client) return;
+        if (isDropWindowClosed()) return;
 
         try {
           await client.rpc("record_visit", {

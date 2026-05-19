@@ -73,7 +73,14 @@ as $$
 declare
   v_headers jsonb;
   v_ip text;
+  v_denver_hour int;
 begin
+  v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
+
+  if v_denver_hour >= 23 or v_denver_hour < 9 then
+    return jsonb_build_object('ok', false, 'message', 'Visit ignored during curfew.');
+  end if;
+
   v_headers := coalesce(nullif(current_setting('request.headers', true), '')::jsonb, '{}'::jsonb);
   v_ip := coalesce(
     v_headers ->> 'cf-connecting-ip',
