@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Drop Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #100713;
+        --panel: #24101b;
+        --text: #fff1df;
+        --muted: #d9a68a;
+        --accent: #ff8a3d;
+        --accent-2: #ffd166;
+        --danger: #ff5d73;
+        font-family: "Share Tech Mono", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        padding: clamp(18px, 4vw, 42px);
+        color: var(--text);
+        background-color: var(--bg);
+        background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px);
+        background-size: 18px 18px;
+      }
+
+      main {
+        width: min(100%, 880px);
+        margin: 0 auto;
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        color: var(--accent-2);
+        font-size: clamp(1.25rem, 4vw, 2rem);
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      button {
+        min-height: 40px;
+        border: 1px solid rgba(255, 209, 102, 0.76);
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: linear-gradient(180deg, #ffe08a, #ff9f55);
+        color: #1b0711;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        min-height: 118px;
+        border: 1px solid rgba(255, 209, 102, 0.38);
+        border-radius: 8px;
+        padding: 14px;
+        background:
+          linear-gradient(145deg, rgba(50, 18, 30, 0.94), rgba(14, 5, 15, 0.96)),
+          var(--panel);
+        box-shadow:
+          0 0 22px rgba(255, 138, 61, 0.16),
+          inset 0 0 18px rgba(255, 209, 102, 0.06);
+      }
+
+      .card span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+      }
+
+      .card strong {
+        display: block;
+        margin-top: 12px;
+        color: var(--accent-2);
+        font-size: clamp(1.75rem, 6vw, 3rem);
+        line-height: 1;
+      }
+
+      .status {
+        margin-top: 14px;
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      .status.is-error {
+        color: var(--danger);
+      }
+
+      @media (max-width: 720px) {
+        header {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="muted">dropmmssgg.uk</p>
+          <h1>Admin Counter</h1>
+        </div>
+        <button id="refreshButton" type="button">Refresh</button>
+      </header>
+
+      <section class="grid" aria-label="Website counters">
+        <article class="card">
+          <span>Users Online</span>
+          <strong id="usersOnline">--</strong>
+        </article>
+        <article class="card">
+          <span>Visits Today</span>
+          <strong id="visitsToday">--</strong>
+        </article>
+        <article class="card">
+          <span>Total Visits</span>
+          <strong id="totalVisits">--</strong>
+        </article>
+        <article class="card">
+          <span>Unique Devices Today</span>
+          <strong id="uniqueDevices">--</strong>
+        </article>
+        <article class="card">
+          <span>Unique IPs Today</span>
+          <strong id="uniqueIps">--</strong>
+        </article>
+        <article class="card">
+          <span>Drops Today / Total</span>
+          <strong id="dropsCount">--</strong>
+        </article>
+      </section>
+
+      <p class="status" id="status">loading counters...</p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+      const usersOnline = document.querySelector("#usersOnline");
+      const visitsToday = document.querySelector("#visitsToday");
+      const totalVisits = document.querySelector("#totalVisits");
+      const uniqueDevices = document.querySelector("#uniqueDevices");
+      const uniqueIps = document.querySelector("#uniqueIps");
+      const dropsCount = document.querySelector("#dropsCount");
+      const status = document.querySelector("#status");
+      const refreshButton = document.querySelector("#refreshButton");
+
+      const setStatus = (message, isError = false) => {
+        status.textContent = message;
+        status.className = isError ? "status is-error" : "status";
+      };
+
+      const setNumber = (element, value) => {
+        element.textContent = new Intl.NumberFormat().format(Math.max(Number(value) || 0, 0));
+      };
+
+      const loadStats = async () => {
+        try {
+          const { data, error } = await client.rpc("get_admin_stats");
+
+          if (error) throw error;
+
+          setNumber(visitsToday, data?.visits_today);
+          setNumber(totalVisits, data?.total_visits);
+          setNumber(uniqueDevices, data?.unique_devices_today);
+          setNumber(uniqueIps, data?.unique_ips_today);
+          dropsCount.textContent = `${Math.max(Number(data?.drops_today) || 0, 0)} / ${Math.max(Number(data?.total_drops) || 0, 0)}`;
+          setStatus(`last updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+        } catch (error) {
+          console.error("Admin stats failed:", error);
+          setStatus("analytics SQL is not installed yet. Run supabase-schema.sql in Supabase.", true);
+        }
+      };
+
+      const initPresence = () => {
+        const channel = client.channel("drop-terminal-presence");
+
+        channel
+          .on("presence", { event: "sync" }, () => {
+            const state = channel.presenceState();
+            const count = Object.values(state).reduce((total, entries) => total + entries.length, 0);
+            setNumber(usersOnline, count);
+          })
+          .subscribe();
+      };
+
+      refreshButton.addEventListener("click", loadStats);
+      initPresence();
+      loadStats();
+      setInterval(loadStats, 15000);
+    </script>
+  </body>
+</html>

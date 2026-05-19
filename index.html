@@ -1142,6 +1142,19 @@
           });
       };
 
+      const recordVisit = async () => {
+        if (!client) return;
+
+        try {
+          await client.rpc("record_visit", {
+            p_client_id: getClientId(),
+            p_path: window.location.pathname || "/",
+          });
+        } catch {
+          // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
+        }
+      };
+
       const showTerminalLog = (message) => {
         clearTimeout(logTypingTimer);
         terminalLog.textContent = "";
@@ -1292,6 +1305,7 @@
       setInterval(updateResetTimer, 1000);
       updateDropWindowState();
       setInterval(updateDropWindowState, 30000);
+      recordVisit();
       initPresence();
       scheduleTerminalLog();
       updateCaret();
