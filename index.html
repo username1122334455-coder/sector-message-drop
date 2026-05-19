@@ -972,27 +972,19 @@
         sendButton.classList.toggle("has-text", hasText);
       };
 
-      const getDenverTimeParts = () => {
-        const parts = new Intl.DateTimeFormat("en-US", {
+      const getDenverHour = () => {
+        const hourText = new Intl.DateTimeFormat("en-US", {
           timeZone: "America/Denver",
           hour: "2-digit",
-          minute: "2-digit",
           hour12: false,
-        }).formatToParts(new Date());
-        const getPart = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
-        const hour = getPart("hour");
-
-        return {
-          hour: hour === 24 ? 0 : hour,
-          minute: getPart("minute"),
-        };
+        }).format(new Date());
+        const hour = Number(hourText);
+        return hour === 24 ? 0 : hour;
       };
 
       const isDropWindowClosed = () => {
-        const { hour, minute } = getDenverTimeParts();
-        const overnightClosed = hour >= 22 || hour < 8;
-        const checkWindowClosed = hour === 9 && minute >= 35 && minute < 40;
-        return overnightClosed || checkWindowClosed;
+        const hour = getDenverHour();
+        return hour >= 22 || hour < 8;
       };
 
       const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.";

@@ -60,7 +60,6 @@ declare
   v_window interval := interval '1 hour';
   v_reset_at timestamptz;
   v_denver_hour int;
-  v_denver_minute int;
 begin
   p_message := upper(trim(p_message));
 
@@ -78,12 +77,8 @@ begin
   end if;
 
   v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
-  v_denver_minute := extract(minute from timezone('America/Denver', now()))::int;
 
-  if v_denver_hour >= 22
-    or v_denver_hour < 8
-    or (v_denver_hour = 9 and v_denver_minute >= 35 and v_denver_minute < 40)
-  then
+  if v_denver_hour >= 22 or v_denver_hour < 8 then
     return jsonb_build_object(
       'ok', false,
       'message', 'DROP CHANNEL OFFLINE. RETURNS AT 08:00 MST.',
