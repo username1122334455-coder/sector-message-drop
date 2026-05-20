@@ -1407,7 +1407,6 @@
         }
 
         const missionReply = getMissionReply(value);
-        if (missionReply) showMissionAlert(missionReply);
 
         if (!client) {
           setFeedback("Supabase link is not configured.", "is-error");
@@ -1447,6 +1446,11 @@
           markDeviceLimitUsed();
           updateResetTimer();
           runSendBurst();
+          if (passwordPromptMode && missionReply) {
+            showMissionAlert(missionReply);
+            setFeedback("");
+            return;
+          }
           if (passwordPromptMode) {
             setFeedback(passwordPromptMessage);
             return;
