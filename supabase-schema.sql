@@ -334,4 +334,39 @@ $$;
 grant execute on function public.get_drop_stats() to anon;
 grant execute on function public.get_drop_stats() to authenticated;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'drop-admin-files',
+  'drop-admin-files',
+  false,
+  52428800,
+  array['image/*', 'video/*']
+)
+on conflict (id) do update
+set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Admin files can be uploaded" on storage.objects;
+drop policy if exists "Admin files can be listed" on storage.objects;
+drop policy if exists "Admin files can be read" on storage.objects;
+
+create policy "Admin files can be uploaded"
+on storage.objects
+for insert
+to anon, authenticated
+with check (bucket_id = 'drop-admin-files');
+
+create policy "Admin files can be listed"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'drop-admin-files');
+
+create policy "Admin files can be read"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'drop-admin-files');
+
 notify pgrst, 'reload schema';
