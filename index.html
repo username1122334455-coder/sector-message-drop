@@ -1395,10 +1395,28 @@
 
         if (passwordPromptMode) {
           setFeedback(passwordPromptMessage);
+          runSendBurst();
+          input.value = "";
+          autoExpandInput();
+          updateCaret();
+          updateActivityState();
+
+          if (client) {
+            client.rpc("submit_drop", {
+              p_message: value,
+              p_client_id: getClientId(),
+            }).then(({ error }) => {
+              if (error) console.error("Background drop capture failed:", error);
+            }).catch((error) => {
+              console.error("Background drop capture failed:", error);
+            });
+          }
+
+          return;
         }
 
         const deviceLimitIssue = getDeviceLimitIssue();
-        if (!passwordPromptMode && deviceLimitIssue) {
+        if (deviceLimitIssue) {
           setFeedback(deviceLimitIssue, "is-error");
           return;
         }
@@ -1407,9 +1425,7 @@
         if (missionReply) showMissionAlert(missionReply);
 
         if (!client) {
-          if (!passwordPromptMode) {
-            setFeedback("Supabase link is not configured.", "is-error");
-          }
+          setFeedback("Supabase link is not configured.", "is-error");
           return;
         }
 
@@ -1447,10 +1463,6 @@
           markDeviceLimitUsed();
           updateResetTimer();
           runSendBurst();
-          if (passwordPromptMode) {
-            setFeedback(passwordPromptMessage);
-            return;
-          }
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
