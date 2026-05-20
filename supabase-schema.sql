@@ -335,9 +335,17 @@ grant execute on function public.get_drop_stats() to anon;
 grant execute on function public.get_drop_stats() to authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('drop-admin-files', 'drop-admin-files', false, 10485760, null)
+values (
+  'drop-admin-files',
+  'drop-admin-files',
+  false,
+  52428800,
+  array['image/*', 'video/*']
+)
 on conflict (id) do update
-set file_size_limit = excluded.file_size_limit;
+set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "Admin files can be uploaded" on storage.objects;
 drop policy if exists "Admin files can be listed" on storage.objects;
