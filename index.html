@@ -932,6 +932,8 @@
         "preparing drop...",
         "sending...",
       ];
+      const passwordPromptMode = true;
+      const passwordPromptMessage = "PASSWORD REQUIRED. ENTER PASSWORD.";
       let audioContext;
       let lastMissionAlertAt = 0;
       let logTimer;
@@ -1413,6 +1415,10 @@
           markDeviceLimitUsed();
           updateResetTimer();
           runSendBurst();
+          if (passwordPromptMode) {
+            setFeedback(passwordPromptMessage);
+            return;
+          }
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
