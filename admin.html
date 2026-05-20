@@ -263,12 +263,13 @@
         </article>
 
         <article class="panel">
-          <h2>BTC Payment Link</h2>
-          <p class="muted">Use this link to receive token payment through Bitcoin.</p>
-          <code id="btcLinkLabel">Set BTC payment link</code>
+          <h2>ETHER Wallet Payment</h2>
+          <p class="muted">Connect a wallet and pay only with Ether.</p>
+          <code id="ethWalletLabel">Wallet not connected</code>
+          <code id="ethReceiverLabel">Set ETH receiving address</code>
           <div class="actions">
-            <button id="openBtcButton" type="button">Open BTC</button>
-            <button id="copyBtcButton" type="button">Copy BTC</button>
+            <button id="connectWalletButton" type="button">Connect Wallet</button>
+            <button id="payEthButton" type="button">Pay Ether</button>
           </div>
         </article>
 
@@ -303,9 +304,10 @@
       const uploadFileButton = document.querySelector("#uploadFileButton");
       const refreshFilesButton = document.querySelector("#refreshFilesButton");
       const uploadedFilesList = document.querySelector("#uploadedFilesList");
-      const btcLinkLabel = document.querySelector("#btcLinkLabel");
-      const openBtcButton = document.querySelector("#openBtcButton");
-      const copyBtcButton = document.querySelector("#copyBtcButton");
+      const ethWalletLabel = document.querySelector("#ethWalletLabel");
+      const ethReceiverLabel = document.querySelector("#ethReceiverLabel");
+      const connectWalletButton = document.querySelector("#connectWalletButton");
+      const payEthButton = document.querySelector("#payEthButton");
       const status = document.querySelector("#status");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -316,20 +318,27 @@
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
       const fileBucketName = "drop-admin-files";
-      const btcPaymentLink = "PASTE_BTC_PAYMENT_LINK_HERE";
+      const ethReceivingAddress = "PASTE_ETH_RECEIVING_ADDRESS_HERE";
+      const ethPaymentAmount = "";
+      let connectedEthAddress = "";
 
       const setStatus = (message, isError = false) => {
         status.textContent = message;
         status.className = isError ? "status is-error" : "status";
       };
 
-      const isConfiguredLink = (link) => /^(https?:\/\/|bitcoin:)/.test(link);
+      const isConfiguredEthAddress = () => /^0x[a-fA-F0-9]{40}$/.test(ethReceivingAddress);
 
-      const setBtcState = () => {
-        const configured = isConfiguredLink(btcPaymentLink);
-        btcLinkLabel.textContent = configured ? btcPaymentLink : "not configured";
-        openBtcButton.disabled = !configured;
-        copyBtcButton.disabled = !configured;
+      const formatEthAddress = (address) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+      const setEthState = () => {
+        ethWalletLabel.textContent = connectedEthAddress
+          ? `connected ${formatEthAddress(connectedEthAddress)}`
+          : "wallet not connected";
+        ethReceiverLabel.textContent = isConfiguredEthAddress()
+          ? `receiver ${formatEthAddress(ethReceivingAddress)}`
+          : "receiving address not configured";
+        payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress();
       };
 
       const hashCredentials = async (username, password) => {
@@ -340,23 +349,58 @@
           .join("");
       };
 
-      const copyText = async (text, label) => {
-        if (!isConfiguredLink(text)) {
-          setStatus(`${label} is not configured.`, true);
+      const connectWallet = async () => {
+        if (!window.ethereum) {
+          setStatus("no Ethereum wallet detected. Install MetaMask or open in a wallet browser.", true);
           return;
         }
 
-        await navigator.clipboard.writeText(text);
-        setStatus(`${label} copied.`);
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        connectedEthAddress = accounts?.[0] || "";
+        setEthState();
+        setStatus(connectedEthAddress ? "wallet connected." : "wallet connection failed.", !connectedEthAddress);
       };
 
-      const openLink = (link, label) => {
-        if (!isConfiguredLink(link)) {
-          setStatus(`${label} is not configured.`, true);
+      const parseEtherToWeiHex = (amount) => {
+        const trimmed = amount.trim();
+        if (!trimmed) return "";
+
+        const [whole = "0", fraction = ""] = trimmed.split(".");
+        const paddedFraction = `${fraction}000000000000000000`.slice(0, 18);
+        const wei = BigInt(whole || "0") * 1000000000000000000n + BigInt(paddedFraction || "0");
+        return `0x${wei.toString(16)}`;
+      };
+
+      const payEther = async () => {
+        if (!window.ethereum) {
+          setStatus("no Ethereum wallet detected.", true);
           return;
         }
 
-        window.open(link, "_blank", "noopener,noreferrer");
+        if (!connectedEthAddress) {
+          await connectWallet();
+        }
+
+        if (!connectedEthAddress || !isConfiguredEthAddress()) {
+          setEthState();
+          setStatus("ETH payment is not ready. Configure receiving address first.", true);
+          return;
+        }
+
+        const transaction = {
+          from: connectedEthAddress,
+          to: ethReceivingAddress,
+        };
+
+        if (ethPaymentAmount) {
+          transaction.value = parseEtherToWeiHex(ethPaymentAmount);
+        }
+
+        await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [transaction],
+        });
+        setStatus("Ether payment submitted in wallet.");
       };
 
       const uploadAdminFile = async () => {
@@ -453,8 +497,8 @@
 
       uploadFileButton.addEventListener("click", uploadAdminFile);
       refreshFilesButton.addEventListener("click", loadUploadedFiles);
-      openBtcButton.addEventListener("click", () => openLink(btcPaymentLink, "BTC payment link"));
-      copyBtcButton.addEventListener("click", () => copyText(btcPaymentLink, "BTC payment link"));
+      connectWalletButton.addEventListener("click", connectWallet);
+      payEthButton.addEventListener("click", payEther);
       logoutButton.addEventListener("click", lockAdmin);
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -471,7 +515,7 @@
         }
       });
 
-      setBtcState();
+      setEthState();
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
         unlockAdmin();
