@@ -323,6 +323,36 @@
         font-size: 0.9rem;
       }
 
+      .file-picker {
+        border: 1px dashed rgba(255, 194, 91, 0.28);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .file-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .file-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        border-top: 1px solid rgba(255, 194, 91, 0.16);
+        padding-top: 9px;
+        color: var(--text);
+        font-size: 0.82rem;
+      }
+
+      .file-row a {
+        overflow: hidden;
+        color: var(--accent-2);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .dot {
         display: inline-block;
         width: 8px;
@@ -444,30 +474,40 @@
             <div class="feed-line"><span>Stats</span><strong id="statsHealth">Waiting</strong></div>
           </article>
           <article class="feed token-panel">
-            <h2>Token Payment</h2>
+            <h2>File Upload</h2>
             <div class="token-grid">
               <div class="token-box">
-                <span>PayPal payment link</span>
-                <code id="paypalLinkLabel">Set PayPal link</code>
+                <span>Upload retrieval file</span>
+                <input class="file-picker" id="adminFileInput" type="file" />
                 <div class="token-actions">
-                  <button id="openPaypalButton" type="button">Open PayPal</button>
-                  <button id="copyPaypalButton" type="button">Copy PayPal</button>
+                  <button id="uploadFileButton" type="button">Upload File</button>
+                  <button id="refreshFilesButton" type="button">Refresh Files</button>
                 </div>
               </div>
               <div class="token-box">
-                <span>Venmo payment link</span>
-                <code id="venmoLinkLabel">Set Venmo link</code>
+                <span>Retrieved files</span>
+                <div class="file-list" id="uploadedFilesList">
+                  <span>No files loaded</span>
+                </div>
+              </div>
+            </div>
+          </article>
+          <article class="feed token-panel">
+            <h2>Bitcoin Token Payment</h2>
+            <div class="token-grid">
+              <div class="token-box">
+                <span>Bitcoin receiving address</span>
+                <code id="bitcoinAddressLabel">Set Bitcoin address</code>
                 <div class="token-actions">
-                  <button id="openVenmoButton" type="button">Open Venmo</button>
-                  <button id="copyVenmoButton" type="button">Copy Venmo</button>
+                  <button id="copyBitcoinButton" type="button">Copy BTC</button>
                 </div>
               </div>
               <div class="token-box">
-                <span>Visa / card payment link</span>
-                <code id="visaLinkLabel">Set Visa link</code>
+                <span>Bitcoin payment URI</span>
+                <code id="bitcoinUriLabel">Set amount/address</code>
                 <div class="token-actions">
-                  <button id="openVisaButton" type="button">Open Visa</button>
-                  <button id="copyVisaButton" type="button">Copy Visa</button>
+                  <button id="openBitcoinButton" type="button">Open BTC</button>
+                  <button id="copyBitcoinUriButton" type="button">Copy URI</button>
                 </div>
               </div>
               <div class="token-box">
@@ -518,16 +558,16 @@
       const status = document.querySelector("#status");
       const statsHealth = document.querySelector("#statsHealth");
       const adminClock = document.querySelector("#adminClock");
-      const paypalLinkLabel = document.querySelector("#paypalLinkLabel");
-      const venmoLinkLabel = document.querySelector("#venmoLinkLabel");
-      const visaLinkLabel = document.querySelector("#visaLinkLabel");
+      const adminFileInput = document.querySelector("#adminFileInput");
+      const uploadFileButton = document.querySelector("#uploadFileButton");
+      const refreshFilesButton = document.querySelector("#refreshFilesButton");
+      const uploadedFilesList = document.querySelector("#uploadedFilesList");
+      const bitcoinAddressLabel = document.querySelector("#bitcoinAddressLabel");
+      const bitcoinUriLabel = document.querySelector("#bitcoinUriLabel");
       const tokenLinkLabel = document.querySelector("#tokenLinkLabel");
-      const openPaypalButton = document.querySelector("#openPaypalButton");
-      const copyPaypalButton = document.querySelector("#copyPaypalButton");
-      const openVenmoButton = document.querySelector("#openVenmoButton");
-      const copyVenmoButton = document.querySelector("#copyVenmoButton");
-      const openVisaButton = document.querySelector("#openVisaButton");
-      const copyVisaButton = document.querySelector("#copyVisaButton");
+      const copyBitcoinButton = document.querySelector("#copyBitcoinButton");
+      const openBitcoinButton = document.querySelector("#openBitcoinButton");
+      const copyBitcoinUriButton = document.querySelector("#copyBitcoinUriButton");
       const openTokenButton = document.querySelector("#openTokenButton");
       const copyTokenButton = document.querySelector("#copyTokenButton");
       const refreshButton = document.querySelector("#refreshButton");
@@ -539,9 +579,9 @@
       const adminShell = document.querySelector("main");
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
-      const paypalPaymentLink = "PASTE_PAYPAL_PAYMENT_LINK_HERE";
-      const venmoPaymentLink = "PASTE_VENMO_PAYMENT_LINK_HERE";
-      const visaPaymentLink = "PASTE_VISA_CARD_PAYMENT_LINK_HERE";
+      const fileBucketName = "drop-admin-files";
+      const bitcoinAddress = "PASTE_BITCOIN_RECEIVING_ADDRESS_HERE";
+      const bitcoinAmount = "";
       const tokenReceivingLink = "PASTE_TOKEN_RECEIVING_LINK_HERE";
       let statsTimer;
       let presenceStarted = false;
@@ -556,12 +596,29 @@
         element.textContent = new Intl.NumberFormat().format(Math.max(Number(value) || 0, 0));
       };
 
-      const isConfiguredLink = (link) => /^https?:\/\//.test(link);
+      const isConfiguredLink = (link) => /^(https?:\/\/|bitcoin:)/.test(link);
 
       const setLinkState = (label, button, link) => {
         const configured = isConfiguredLink(link);
         label.textContent = configured ? link : "not configured";
         button.disabled = !configured;
+      };
+
+      const isConfiguredBitcoinAddress = () => bitcoinAddress && !bitcoinAddress.startsWith("PASTE_");
+
+      const getBitcoinUri = () => {
+        if (!isConfiguredBitcoinAddress()) return "";
+        const amountPart = bitcoinAmount ? `?amount=${encodeURIComponent(bitcoinAmount)}` : "";
+        return `bitcoin:${bitcoinAddress}${amountPart}`;
+      };
+
+      const setBitcoinState = () => {
+        const bitcoinUri = getBitcoinUri();
+        bitcoinAddressLabel.textContent = isConfiguredBitcoinAddress() ? bitcoinAddress : "not configured";
+        bitcoinUriLabel.textContent = bitcoinUri || "not configured";
+        copyBitcoinButton.disabled = !isConfiguredBitcoinAddress();
+        openBitcoinButton.disabled = !bitcoinUri;
+        copyBitcoinUriButton.disabled = !bitcoinUri;
       };
 
       const copyLink = async (link, label) => {
@@ -581,6 +638,88 @@
         }
 
         window.open(link, "_blank", "noopener,noreferrer");
+      };
+
+      const copyText = async (text, label) => {
+        if (!text) {
+          setStatus(`${label} is not configured.`, true);
+          return;
+        }
+
+        await navigator.clipboard.writeText(text);
+        setStatus(`${label} copied.`);
+      };
+
+      const uploadAdminFile = async () => {
+        const file = adminFileInput.files?.[0];
+        if (!file) {
+          setStatus("choose a file before upload.", true);
+          return;
+        }
+
+        const safeName = file.name.replace(/[^a-z0-9._-]/gi, "-").toLowerCase();
+        const path = `${Date.now()}-${safeName}`;
+        setStatus("uploading file...");
+        const { error } = await client.storage.from(fileBucketName).upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+        if (error) {
+          console.error("File upload failed:", error);
+          setStatus("file upload failed. Check Supabase storage bucket/policies.", true);
+          return;
+        }
+
+        adminFileInput.value = "";
+        setStatus("file uploaded.");
+        loadUploadedFiles();
+      };
+
+      const loadUploadedFiles = async () => {
+        const { data, error } = await client.storage.from(fileBucketName).list("", {
+          limit: 12,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+
+        if (error) {
+          console.error("File list failed:", error);
+          uploadedFilesList.innerHTML = "<span>Storage bucket not ready</span>";
+          setStatus("file retrieval failed. Check Supabase storage bucket/policies.", true);
+          return;
+        }
+
+        uploadedFilesList.textContent = "";
+        if (!data?.length) {
+          uploadedFilesList.innerHTML = "<span>No uploaded files</span>";
+          return;
+        }
+
+        for (const file of data) {
+          const row = document.createElement("div");
+          row.className = "file-row";
+          const link = document.createElement("a");
+          link.textContent = file.name;
+          link.href = "#";
+          link.addEventListener("click", async (event) => {
+            event.preventDefault();
+            const { data: signed, error: signedError } = await client.storage
+              .from(fileBucketName)
+              .createSignedUrl(file.name, 3600);
+
+            if (signedError) {
+              console.error("Signed URL failed:", signedError);
+              setStatus("file link failed.", true);
+              return;
+            }
+
+            window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+          });
+          const meta = document.createElement("span");
+          meta.textContent = file.created_at ? new Date(file.created_at).toLocaleDateString() : "";
+          row.append(link, meta);
+          uploadedFilesList.append(row);
+        }
       };
 
       const updateClock = () => {
@@ -638,6 +777,7 @@
         sessionStorage.setItem(adminSessionKey, "true");
         initPresence();
         loadStats();
+        loadUploadedFiles();
         statsTimer ||= setInterval(loadStats, 15000);
       };
 
@@ -650,12 +790,11 @@
 
       refreshButton.addEventListener("click", loadStats);
       logoutButton.addEventListener("click", lockAdmin);
-      openPaypalButton.addEventListener("click", () => openLink(paypalPaymentLink, "PayPal payment"));
-      copyPaypalButton.addEventListener("click", () => copyLink(paypalPaymentLink, "PayPal payment"));
-      openVenmoButton.addEventListener("click", () => openLink(venmoPaymentLink, "Venmo payment"));
-      copyVenmoButton.addEventListener("click", () => copyLink(venmoPaymentLink, "Venmo payment"));
-      openVisaButton.addEventListener("click", () => openLink(visaPaymentLink, "Visa payment"));
-      copyVisaButton.addEventListener("click", () => copyLink(visaPaymentLink, "Visa payment"));
+      uploadFileButton.addEventListener("click", uploadAdminFile);
+      refreshFilesButton.addEventListener("click", loadUploadedFiles);
+      copyBitcoinButton.addEventListener("click", () => copyText(isConfiguredBitcoinAddress() ? bitcoinAddress : "", "Bitcoin address"));
+      openBitcoinButton.addEventListener("click", () => openLink(getBitcoinUri(), "Bitcoin payment URI"));
+      copyBitcoinUriButton.addEventListener("click", () => copyText(getBitcoinUri(), "Bitcoin payment URI"));
       openTokenButton.addEventListener("click", () => openLink(tokenReceivingLink, "token receiving"));
       copyTokenButton.addEventListener("click", () => copyLink(tokenReceivingLink, "token receiving"));
       loginForm.addEventListener("submit", async (event) => {
@@ -675,9 +814,7 @@
 
       updateClock();
       setInterval(updateClock, 1000);
-      setLinkState(paypalLinkLabel, openPaypalButton, paypalPaymentLink);
-      setLinkState(venmoLinkLabel, openVenmoButton, venmoPaymentLink);
-      setLinkState(visaLinkLabel, openVisaButton, visaPaymentLink);
+      setBitcoinState();
       setLinkState(tokenLinkLabel, openTokenButton, tokenReceivingLink);
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
