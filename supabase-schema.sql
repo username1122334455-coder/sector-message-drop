@@ -74,10 +74,13 @@ declare
   v_headers jsonb;
   v_ip text;
   v_denver_hour int;
+  v_denver_date date;
+  v_curfew_override_date date := date '2026-05-20';
 begin
+  v_denver_date := timezone('America/Denver', now())::date;
   v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
 
-  if v_denver_hour >= 23 or v_denver_hour < 9 then
+  if v_denver_date <> v_curfew_override_date and (v_denver_hour >= 23 or v_denver_hour < 9) then
     return jsonb_build_object('ok', false, 'message', 'Visit ignored during curfew.');
   end if;
 
@@ -127,6 +130,8 @@ declare
   v_window interval := interval '1 hour';
   v_reset_at timestamptz;
   v_denver_hour int;
+  v_denver_date date;
+  v_curfew_override_date date := date '2026-05-20';
 begin
   p_message := upper(trim(p_message));
 
@@ -143,9 +148,10 @@ begin
     );
   end if;
 
+  v_denver_date := timezone('America/Denver', now())::date;
   v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
 
-  if v_denver_hour >= 23 or v_denver_hour < 9 then
+  if v_denver_date <> v_curfew_override_date and (v_denver_hour >= 23 or v_denver_hour < 9) then
     return jsonb_build_object(
       'ok', false,
       'message', 'DROP CHANNEL OFFLINE. RETURNS AT 09:00.',

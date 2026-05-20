@@ -1011,8 +1011,24 @@
       const openSecond = 9 * 3600;
       const closeSecond = 23 * 3600;
       const curfewNoticeWindow = 60 * 60;
+      const curfewOverrideDate = "2026-05-20";
+
+      const getDenverDateStamp = () => {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Denver",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).formatToParts(new Date());
+        const value = (type) => parts.find((part) => part.type === type)?.value || "";
+        return `${value("year")}-${value("month")}-${value("day")}`;
+      };
+
+      const isCurfewOverrideActive = () => getDenverDateStamp() === curfewOverrideDate;
 
       const getCurfewNotice = () => {
+        if (isCurfewOverrideActive()) return null;
+
         const seconds = getDenverSecondsSinceMidnight();
 
         if (seconds >= openSecond - curfewNoticeWindow && seconds < openSecond) {
@@ -1033,7 +1049,7 @@
       };
 
       const updateDropWindowState = () => {
-        dropWindowClosed = isDropWindowClosed();
+        dropWindowClosed = !isCurfewOverrideActive() && isDropWindowClosed();
         input.disabled = dropWindowClosed || isSending;
         sendButton.disabled = dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
@@ -1190,7 +1206,7 @@
 
       const recordVisit = async () => {
         if (!client) return;
-        if (isDropWindowClosed()) return;
+        if (!isCurfewOverrideActive() && isDropWindowClosed()) return;
 
         try {
           await client.rpc("record_visit", {
