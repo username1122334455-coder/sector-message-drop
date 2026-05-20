@@ -340,7 +340,7 @@ values (
   'drop-admin-files',
   false,
   52428800,
-  array['image/*', 'video/*']
+  null
 )
 on conflict (id) do update
 set

@@ -426,6 +426,11 @@
 
         if (error) {
           console.error("File upload failed:", error);
+          if (/bucket not found/i.test(error.message || "")) {
+            setStatus("storage bucket missing. Run the drop-admin-files SQL in Supabase.", true);
+            return;
+          }
+
           setStatus("file upload failed. Check Supabase storage bucket/policies.", true);
           return;
         }
@@ -444,6 +449,11 @@
         if (error) {
           console.error("File list failed:", error);
           uploadedFilesList.innerHTML = '<span class="muted">Storage bucket not ready</span>';
+          if (/bucket not found/i.test(error.message || "")) {
+            setStatus("storage bucket missing. Run the drop-admin-files SQL in Supabase.", true);
+            return;
+          }
+
           setStatus("file retrieval failed. Check Supabase storage bucket/policies.", true);
           return;
         }
