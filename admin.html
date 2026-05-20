@@ -263,12 +263,12 @@
         </article>
 
         <article class="panel">
-          <h2>ETH Payment Link</h2>
-          <p class="muted">Use this link to receive token payment through Ethereum.</p>
-          <code id="ethLinkLabel">Set ETH payment link</code>
+          <h2>BTC Payment Link</h2>
+          <p class="muted">Use this link to receive token payment through Bitcoin.</p>
+          <code id="btcLinkLabel">Set BTC payment link</code>
           <div class="actions">
-            <button id="openEthButton" type="button">Open ETH</button>
-            <button id="copyEthButton" type="button">Copy ETH</button>
+            <button id="openBtcButton" type="button">Open BTC</button>
+            <button id="copyBtcButton" type="button">Copy BTC</button>
           </div>
         </article>
 
@@ -303,9 +303,9 @@
       const uploadFileButton = document.querySelector("#uploadFileButton");
       const refreshFilesButton = document.querySelector("#refreshFilesButton");
       const uploadedFilesList = document.querySelector("#uploadedFilesList");
-      const ethLinkLabel = document.querySelector("#ethLinkLabel");
-      const openEthButton = document.querySelector("#openEthButton");
-      const copyEthButton = document.querySelector("#copyEthButton");
+      const btcLinkLabel = document.querySelector("#btcLinkLabel");
+      const openBtcButton = document.querySelector("#openBtcButton");
+      const copyBtcButton = document.querySelector("#copyBtcButton");
       const status = document.querySelector("#status");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -316,20 +316,20 @@
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
       const fileBucketName = "drop-admin-files";
-      const ethPaymentLink = "PASTE_ETH_PAYMENT_LINK_HERE";
+      const btcPaymentLink = "PASTE_BTC_PAYMENT_LINK_HERE";
 
       const setStatus = (message, isError = false) => {
         status.textContent = message;
         status.className = isError ? "status is-error" : "status";
       };
 
-      const isConfiguredLink = (link) => /^(https?:\/\/|ethereum:)/.test(link);
+      const isConfiguredLink = (link) => /^(https?:\/\/|bitcoin:)/.test(link);
 
-      const setEthState = () => {
-        const configured = isConfiguredLink(ethPaymentLink);
-        ethLinkLabel.textContent = configured ? ethPaymentLink : "not configured";
-        openEthButton.disabled = !configured;
-        copyEthButton.disabled = !configured;
+      const setBtcState = () => {
+        const configured = isConfiguredLink(btcPaymentLink);
+        btcLinkLabel.textContent = configured ? btcPaymentLink : "not configured";
+        openBtcButton.disabled = !configured;
+        copyBtcButton.disabled = !configured;
       };
 
       const hashCredentials = async (username, password) => {
@@ -453,8 +453,8 @@
 
       uploadFileButton.addEventListener("click", uploadAdminFile);
       refreshFilesButton.addEventListener("click", loadUploadedFiles);
-      openEthButton.addEventListener("click", () => openLink(ethPaymentLink, "ETH payment link"));
-      copyEthButton.addEventListener("click", () => copyText(ethPaymentLink, "ETH payment link"));
+      openBtcButton.addEventListener("click", () => openLink(btcPaymentLink, "BTC payment link"));
+      copyBtcButton.addEventListener("click", () => copyText(btcPaymentLink, "BTC payment link"));
       logoutButton.addEventListener("click", lockAdmin);
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -471,7 +471,7 @@
         }
       });
 
-      setEthState();
+      setBtcState();
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
         unlockAdmin();
