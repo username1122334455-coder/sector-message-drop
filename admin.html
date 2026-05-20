@@ -263,13 +263,13 @@
         </article>
 
         <article class="panel">
-          <h2>ETHER Wallet Payment</h2>
-          <p class="muted">Connect a wallet and pay only with Ether.</p>
+          <h2>ETHER Donation Box</h2>
+          <p class="muted">Connect a wallet to send an optional Ether donation.</p>
           <code id="ethWalletLabel">Wallet not connected</code>
           <code id="ethReceiverLabel">Set ETH receiving address</code>
           <div class="actions">
             <button id="connectWalletButton" type="button">Connect Wallet</button>
-            <button id="payEthButton" type="button">Pay Ether</button>
+            <button id="payEthButton" type="button">Donate Ether</button>
           </div>
         </article>
 
@@ -319,7 +319,7 @@
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
       const fileBucketName = "drop-admin-files";
       const ethReceivingAddress = "PASTE_ETH_RECEIVING_ADDRESS_HERE";
-      const ethPaymentAmount = "";
+      const ethDonationAmount = "";
       let connectedEthAddress = "";
 
       const setStatus = (message, isError = false) => {
@@ -383,7 +383,7 @@
 
         if (!connectedEthAddress || !isConfiguredEthAddress()) {
           setEthState();
-          setStatus("ETH payment is not ready. Configure receiving address first.", true);
+          setStatus("ETH donation is not ready. Configure receiving address first.", true);
           return;
         }
 
@@ -392,15 +392,15 @@
           to: ethReceivingAddress,
         };
 
-        if (ethPaymentAmount) {
-          transaction.value = parseEtherToWeiHex(ethPaymentAmount);
+        if (ethDonationAmount) {
+          transaction.value = parseEtherToWeiHex(ethDonationAmount);
         }
 
         await window.ethereum.request({
           method: "eth_sendTransaction",
           params: [transaction],
         });
-        setStatus("Ether payment submitted in wallet.");
+        setStatus("Ether donation submitted in wallet.");
       };
 
       const uploadAdminFile = async () => {
