@@ -244,21 +244,12 @@
 
       <section class="console" aria-label="Media admin console">
         <article class="panel">
-          <h2>Picture / Video Upload</h2>
-          <label>
-            Choose media file
-            <input class="file-picker" id="adminFileInput" type="file" accept="image/*,video/*" />
-          </label>
-          <div class="actions">
-            <button id="uploadFileButton" type="button">Upload File</button>
-            <button id="refreshFilesButton" type="button">Refresh Files</button>
-          </div>
-        </article>
-
-        <article class="panel">
           <h2>Uploaded Files</h2>
           <div class="file-list" id="uploadedFilesList">
             <span class="muted">No files loaded</span>
+          </div>
+          <div class="actions">
+            <button id="refreshFilesButton" type="button">Refresh Files</button>
           </div>
         </article>
 
@@ -300,8 +291,6 @@
       const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
       const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-      const adminFileInput = document.querySelector("#adminFileInput");
-      const uploadFileButton = document.querySelector("#uploadFileButton");
       const refreshFilesButton = document.querySelector("#refreshFilesButton");
       const uploadedFilesList = document.querySelector("#uploadedFilesList");
       const ethWalletLabel = document.querySelector("#ethWalletLabel");
@@ -403,43 +392,6 @@
         setStatus("Ether donation submitted in wallet.");
       };
 
-      const uploadAdminFile = async () => {
-        const file = adminFileInput.files?.[0];
-        if (!file) {
-          setStatus("choose a picture or video before upload.", true);
-          return;
-        }
-
-        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-          setStatus("only picture and video files are allowed.", true);
-          return;
-        }
-
-        const safeName = file.name.replace(/[^a-z0-9._-]/gi, "-").toLowerCase();
-        const path = `${Date.now()}-${safeName}`;
-        setStatus("uploading file...");
-        const { error } = await client.storage.from(fileBucketName).upload(path, file, {
-          cacheControl: "3600",
-          contentType: file.type,
-          upsert: false,
-        });
-
-        if (error) {
-          console.error("File upload failed:", error);
-          if (/bucket not found/i.test(error.message || "")) {
-            setStatus("storage bucket missing. Run the drop-admin-files SQL in Supabase.", true);
-            return;
-          }
-
-          setStatus("file upload failed. Check Supabase storage bucket/policies.", true);
-          return;
-        }
-
-        adminFileInput.value = "";
-        setStatus("file uploaded.");
-        loadUploadedFiles();
-      };
-
       const loadUploadedFiles = async () => {
         const { data, error } = await client.storage.from(fileBucketName).list("", {
           limit: 20,
@@ -505,7 +457,6 @@
         adminPassword.value = "";
       };
 
-      uploadFileButton.addEventListener("click", uploadAdminFile);
       refreshFilesButton.addEventListener("click", loadUploadedFiles);
       connectWalletButton.addEventListener("click", connectWallet);
       payEthButton.addEventListener("click", payEther);
