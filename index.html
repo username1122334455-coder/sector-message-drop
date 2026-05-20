@@ -1103,6 +1103,7 @@
 
       const validate = (value) => {
         if (!value) return "Enter a message.";
+        if (passwordPromptMode) return "";
         if (value.length > 26) return "Message max is 26 characters.";
         if (/\s/.test(value)) return "No spaces.";
         return "";
@@ -1325,7 +1326,7 @@
         const isSingleCharacter = event.key.length === 1;
         const hasRoom = input.value.length < 26 || input.selectionStart !== input.selectionEnd;
 
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.key === "Enter" || (!passwordPromptMode && event.key === " ")) {
           event.preventDefault();
           return;
         }
@@ -1336,7 +1337,9 @@
       });
 
       input.addEventListener("input", () => {
-        input.value = input.value.replace(/\s/g, "").slice(0, 26);
+        if (!passwordPromptMode) {
+          input.value = input.value.replace(/\s/g, "").slice(0, 26);
+        }
         autoExpandInput();
         updateCaret();
         updateActivityState();
@@ -1360,6 +1363,9 @@
       window.addEventListener("resize", updateCaret);
       updateMilitaryClock();
       setInterval(updateMilitaryClock, 1000);
+      if (passwordPromptMode) {
+        input.removeAttribute("maxlength");
+      }
       updatePlaceholder();
       setInterval(updatePlaceholder, 3200);
       updateActivityState();
@@ -1387,8 +1393,12 @@
           return;
         }
 
+        if (passwordPromptMode) {
+          setFeedback(passwordPromptMessage);
+        }
+
         const deviceLimitIssue = getDeviceLimitIssue();
-        if (deviceLimitIssue) {
+        if (!passwordPromptMode && deviceLimitIssue) {
           setFeedback(deviceLimitIssue, "is-error");
           return;
         }
@@ -1397,7 +1407,9 @@
         if (missionReply) showMissionAlert(missionReply);
 
         if (!client) {
-          setFeedback("Supabase link is not configured.", "is-error");
+          if (!passwordPromptMode) {
+            setFeedback("Supabase link is not configured.", "is-error");
+          }
           return;
         }
 
@@ -1414,13 +1426,17 @@
 
           if (error) {
             console.error("Supabase drop failed:", error);
-            setFeedback(error.message || "Drop failed. Try again.", "is-error");
+            if (!passwordPromptMode) {
+              setFeedback(error.message || "Drop failed. Try again.", "is-error");
+            }
             return;
           }
 
           if (!data?.ok) {
             const resetText = data?.reset_seconds ? formatDuration(data.reset_seconds) : "later";
-            setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${resetText}.`, "is-error");
+            if (!passwordPromptMode) {
+              setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${resetText}.`, "is-error");
+            }
             return;
           }
 

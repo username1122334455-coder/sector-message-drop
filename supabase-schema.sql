@@ -5,8 +5,7 @@ create table if not exists public.drops (
   ip_hash text,
   created_at timestamptz not null default now(),
   constraint drops_message_format check (
-    char_length(message) between 1 and 26
-    and message !~ '\s'
+    char_length(message) between 1 and 500
   )
 );
 
@@ -18,8 +17,7 @@ alter table public.drops
 
 alter table public.drops
   add constraint drops_message_format check (
-    char_length(message) between 1 and 26
-    and message !~ '\s'
+    char_length(message) between 1 and 500
   );
 
 create index if not exists drops_client_hash_created_at_idx
@@ -133,16 +131,15 @@ declare
   v_denver_date date;
   v_curfew_override_date date := date '2026-05-20';
 begin
-  p_message := upper(trim(p_message));
+  p_message := trim(p_message);
 
   if p_message is null
     or char_length(p_message) = 0
-    or char_length(p_message) > 26
-    or p_message ~ '\s'
+    or char_length(p_message) > 500
   then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Message must be 1-26 characters with no spaces.',
+      'message', 'Message must be 1-500 characters.',
       'device_remaining', 0,
       'reset_seconds', 0
     );
