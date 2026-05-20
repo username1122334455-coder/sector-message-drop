@@ -283,6 +283,46 @@
         border-top: 0;
       }
 
+      .token-panel {
+        grid-column: 1 / -1;
+      }
+
+      .token-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .token-box {
+        display: grid;
+        gap: 10px;
+        border: 1px solid rgba(255, 194, 91, 0.16);
+        border-radius: 8px;
+        padding: 12px;
+        background: rgba(255, 138, 61, 0.035);
+      }
+
+      .token-box code {
+        display: block;
+        overflow: hidden;
+        color: var(--accent-2);
+        font-size: 0.82rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .token-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .token-actions button {
+        min-height: 36px;
+        box-shadow: 0 5px 0 rgba(98, 36, 18, 0.78), 0 0 16px var(--shadow);
+        font-size: 0.9rem;
+      }
+
       .dot {
         display: inline-block;
         width: 8px;
@@ -315,14 +355,16 @@
         }
 
         .status-strip,
-        .grid {
+        .grid,
+        .token-grid {
           grid-template-columns: 1fr 1fr;
         }
       }
 
       @media (max-width: 560px) {
         .status-strip,
-        .grid {
+        .grid,
+        .token-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -401,6 +443,27 @@
             <div class="feed-line"><span>Presence</span><strong>Live</strong></div>
             <div class="feed-line"><span>Stats</span><strong id="statsHealth">Waiting</strong></div>
           </article>
+          <article class="feed token-panel">
+            <h2>Token Payment</h2>
+            <div class="token-grid">
+              <div class="token-box">
+                <span>Payment service link</span>
+                <code id="paymentLinkLabel">Set payment link</code>
+                <div class="token-actions">
+                  <button id="openPaymentButton" type="button">Open Pay</button>
+                  <button id="copyPaymentButton" type="button">Copy Pay</button>
+                </div>
+              </div>
+              <div class="token-box">
+                <span>Token receiving link</span>
+                <code id="tokenLinkLabel">Set token link</code>
+                <div class="token-actions">
+                  <button id="openTokenButton" type="button">Open Token</button>
+                  <button id="copyTokenButton" type="button">Copy Token</button>
+                </div>
+              </div>
+            </div>
+          </article>
         </section>
 
         <p class="status" id="status">loading counters...</p>
@@ -439,6 +502,12 @@
       const status = document.querySelector("#status");
       const statsHealth = document.querySelector("#statsHealth");
       const adminClock = document.querySelector("#adminClock");
+      const paymentLinkLabel = document.querySelector("#paymentLinkLabel");
+      const tokenLinkLabel = document.querySelector("#tokenLinkLabel");
+      const openPaymentButton = document.querySelector("#openPaymentButton");
+      const copyPaymentButton = document.querySelector("#copyPaymentButton");
+      const openTokenButton = document.querySelector("#openTokenButton");
+      const copyTokenButton = document.querySelector("#copyTokenButton");
       const refreshButton = document.querySelector("#refreshButton");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -448,6 +517,8 @@
       const adminShell = document.querySelector("main");
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
+      const paymentServiceLink = "PASTE_PAYMENT_LINK_HERE";
+      const tokenReceivingLink = "PASTE_TOKEN_RECEIVING_LINK_HERE";
       let statsTimer;
       let presenceStarted = false;
 
@@ -459,6 +530,33 @@
 
       const setNumber = (element, value) => {
         element.textContent = new Intl.NumberFormat().format(Math.max(Number(value) || 0, 0));
+      };
+
+      const isConfiguredLink = (link) => /^https?:\/\//.test(link);
+
+      const setLinkState = (label, button, link) => {
+        const configured = isConfiguredLink(link);
+        label.textContent = configured ? link : "not configured";
+        button.disabled = !configured;
+      };
+
+      const copyLink = async (link, label) => {
+        if (!isConfiguredLink(link)) {
+          setStatus(`${label} link is not configured.`, true);
+          return;
+        }
+
+        await navigator.clipboard.writeText(link);
+        setStatus(`${label} link copied.`);
+      };
+
+      const openLink = (link, label) => {
+        if (!isConfiguredLink(link)) {
+          setStatus(`${label} link is not configured.`, true);
+          return;
+        }
+
+        window.open(link, "_blank", "noopener,noreferrer");
       };
 
       const updateClock = () => {
@@ -528,6 +626,10 @@
 
       refreshButton.addEventListener("click", loadStats);
       logoutButton.addEventListener("click", lockAdmin);
+      openPaymentButton.addEventListener("click", () => openLink(paymentServiceLink, "payment service"));
+      copyPaymentButton.addEventListener("click", () => copyLink(paymentServiceLink, "payment service"));
+      openTokenButton.addEventListener("click", () => openLink(tokenReceivingLink, "token receiving"));
+      copyTokenButton.addEventListener("click", () => copyLink(tokenReceivingLink, "token receiving"));
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         loginStatus.textContent = "checking...";
@@ -545,6 +647,8 @@
 
       updateClock();
       setInterval(updateClock, 1000);
+      setLinkState(paymentLinkLabel, openPaymentButton, paymentServiceLink);
+      setLinkState(tokenLinkLabel, openTokenButton, tokenReceivingLink);
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
         unlockAdmin();
