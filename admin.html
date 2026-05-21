@@ -119,6 +119,13 @@
         text-transform: uppercase;
       }
 
+      .warning {
+        margin-top: 10px;
+        color: var(--danger);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
       .login-panel,
       .console {
         border: 1px solid var(--line);
@@ -264,6 +271,7 @@
         <article class="panel">
           <h2>ETHER Donation Box</h2>
           <p class="muted">Connect a wallet to send an optional Ether donation.</p>
+          <p class="warning">Ethereum based receiving address will only accept ETH. Other funds may be lost.</p>
           <code id="ethWalletLabel">Wallet not connected</code>
           <code id="ethReceiverLabel">Set ETH receiving address</code>
           <div class="actions">
