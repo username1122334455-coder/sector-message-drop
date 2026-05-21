@@ -265,6 +265,12 @@
         display: block;
       }
 
+      code a {
+        color: inherit;
+        text-decoration-color: rgba(223, 215, 255, 0.58);
+        text-underline-offset: 3px;
+      }
+
       .eth-amount {
         margin-top: 12px;
       }
@@ -309,6 +315,7 @@
           <div class="actions">
             <button id="uploadMediaButton" type="button">Submit File</button>
           </div>
+          <code id="fileTransferMarker">File transfer marker: idle</code>
           <div class="receipt-grid" id="receiptPanel" hidden>
             <code id="receiptLabel">RECEIPT: PENDING</code>
             <code id="tokenLabel">TOKEN PENDING</code>
@@ -339,6 +346,7 @@
             <button id="disconnectWalletButton" type="button">Disconnect Wallet</button>
             <button id="payEthButton" type="button">Send ETH</button>
           </div>
+          <code id="paymentTransferMarker">Payment marker: idle</code>
           <div class="receipt-grid payment-receipt" id="paymentReceiptPanel" hidden>
             <code>Thank you for payment!</code>
             <code id="paymentReceiptStatus">Payment status pending</code>
@@ -396,6 +404,7 @@
 
       const mediaFileInput = document.querySelector("#mediaFileInput");
       const uploadMediaButton = document.querySelector("#uploadMediaButton");
+      const fileTransferMarker = document.querySelector("#fileTransferMarker");
       const receiptPanel = document.querySelector("#receiptPanel");
       const receiptActions = document.querySelector("#receiptActions");
       const receiptLabel = document.querySelector("#receiptLabel");
@@ -412,6 +421,7 @@
       const connectWalletButton = document.querySelector("#connectWalletButton");
       const disconnectWalletButton = document.querySelector("#disconnectWalletButton");
       const payEthButton = document.querySelector("#payEthButton");
+      const paymentTransferMarker = document.querySelector("#paymentTransferMarker");
       const paymentReceiptPanel = document.querySelector("#paymentReceiptPanel");
       const paymentReceiptStatus = document.querySelector("#paymentReceiptStatus");
       const paymentReceiptAmount = document.querySelector("#paymentReceiptAmount");
@@ -441,11 +451,14 @@
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
       const ethPriceUrl = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd";
       const blockscoutBaseUrl = "https://eth.blockscout.com/api/v2";
+      const etherscanBaseUrl = "https://etherscan.io";
       const levelOneUsdLimit = 5000;
       let currentReceipt = "RECEIPT: PENDING";
       let currentToken = "TOKEN PENDING";
       let connectedEthAddress = "";
       let ethUsdPrice = 0;
+      let fileTransferTimer = null;
+      let paymentTransferTimer = null;
 
       const setStatus = (message, isError = false) => {
         status.textContent = message;
@@ -455,6 +468,37 @@
       const copyPlainText = async (text, label) => {
         await navigator.clipboard.writeText(text);
         setStatus(`${label} copied.`);
+      };
+
+      const startMarkerCountdown = (element, label, seconds) => {
+        clearInterval(element === fileTransferMarker ? fileTransferTimer : paymentTransferTimer);
+        const startedAt = Date.now();
+
+        const update = () => {
+          const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+          const remaining = Math.max(seconds - elapsed, 0);
+          element.textContent = `${label}: active, ${remaining}s`;
+        };
+
+        update();
+        const timer = setInterval(update, 1000);
+        if (element === fileTransferMarker) {
+          fileTransferTimer = timer;
+        } else {
+          paymentTransferTimer = timer;
+        }
+      };
+
+      const stopMarkerCountdown = (element, label) => {
+        if (element === fileTransferMarker) {
+          clearInterval(fileTransferTimer);
+          fileTransferTimer = null;
+        } else {
+          clearInterval(paymentTransferTimer);
+          paymentTransferTimer = null;
+        }
+
+        element.textContent = label;
       };
 
       const safeFileName = (name) =>
@@ -496,6 +540,7 @@
         }
 
         uploadMediaButton.disabled = true;
+        startMarkerCountdown(fileTransferMarker, "File transfer marker", 45);
         setStatus("submitting file...");
 
         const path = `incoming/${Date.now()}-${safeFileName(file.name)}`;
@@ -507,6 +552,7 @@
         uploadMediaButton.disabled = false;
 
         if (error) {
+          stopMarkerCountdown(fileTransferMarker, "File transfer marker: failed");
           console.error("Media upload failed:", error);
           if (/bucket not found/i.test(error.message || "")) {
             setStatus("storage bucket missing. Run the drop-admin-files SQL in Supabase.", true);
@@ -521,6 +567,7 @@
           const record = await recordMediaSubmission(path);
           updateReceiptLabels(record.receipt, record.token);
         } catch (error) {
+          stopMarkerCountdown(fileTransferMarker, "File transfer marker: submitted, receipt counter unavailable");
           console.error("Receipt counter failed:", error);
           setStatus("file submitted. receipt counter unavailable; run updated SQL.", true);
           return;
@@ -529,6 +576,7 @@
         mediaFileInput.value = "";
         receiptPanel.hidden = false;
         receiptActions.hidden = false;
+        stopMarkerCountdown(fileTransferMarker, "File transfer marker: complete");
         setStatus("file submitted. receipt released.");
       };
 
@@ -564,6 +612,14 @@
           timeStyle: "medium",
         }).format(date);
 
+      const formatOnchainDateTime = (date) =>
+        new Intl.DateTimeFormat("en-US", {
+          dateStyle: "medium",
+          timeStyle: "medium",
+          timeZone: "UTC",
+          timeZoneName: "short",
+        }).format(date);
+
       const formatEth = (value) => {
         const number = Number(value || 0);
         if (!Number.isFinite(number)) return "0 ETH";
@@ -576,6 +632,21 @@
       };
 
       const formatHistoryHash = (hash) => (hash ? `${hash.slice(0, 10)}...${hash.slice(-6)}` : "hash pending");
+
+      const getEtherscanTxUrl = (hash) => `${etherscanBaseUrl}/tx/${hash}`;
+
+      const appendEtherscanLink = (element, label, hash) => {
+        element.append(document.createTextNode(label));
+        if (!hash) return;
+
+        const link = document.createElement("a");
+        link.href = getEtherscanTxUrl(hash);
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = `Etherscan ${formatHistoryHash(hash)}`;
+        element.append(document.createTextNode(" | "));
+        element.append(link);
+      };
 
       const updateEthEstimate = () => {
         const estimate = getEstimatedUsd();
@@ -628,11 +699,11 @@
 
         for (const record of records) {
           const row = document.createElement("code");
-          const date = record.submitted_at ? formatLocalDateTime(new Date(record.submitted_at)) : "date pending";
+          const date = record.submitted_at ? formatOnchainDateTime(new Date(record.submitted_at)) : "date pending";
           const fee = record.gas_fee_eth ? ` fee ${formatEth(record.gas_fee_eth)}` : " fee pending";
-          row.textContent = `${date} | ${formatEth(record.amount_eth)} | ${formatUsd(
+          appendEtherscanLink(row, `${date} on-chain UTC | ${formatEth(record.amount_eth)} | ${formatUsd(
             Number(record.estimated_usd || 0)
-          )} | ${record.status}${fee} | ${formatEthAddress(record.tx_hash)}`;
+          )} | ${record.status}${fee}`, record.tx_hash);
           paymentHistoryList.append(row);
         }
       };
@@ -738,13 +809,15 @@
 
           for (const record of sentRecords.slice(0, 12)) {
             const row = document.createElement("code");
-            const date = record.timestamp ? formatLocalDateTime(new Date(record.timestamp)) : "date pending";
+            const date = record.timestamp ? formatOnchainDateTime(new Date(record.timestamp)) : "date pending";
             const receiver = record.to?.hash ? formatEthAddress(record.to.hash) : "receiver pending";
             const fee = record.fee?.value ? ` fee ${formatEth(weiToEth(record.fee.value))}` : " fee pending";
             const result = record.result || record.status || "status pending";
-            row.textContent = `${date} | sent ${formatEth(weiToEth(record.value))} to ${receiver} | ${result}${fee} | ${formatHistoryHash(
+            appendEtherscanLink(
+              row,
+              `${date} on-chain UTC | sent ${formatEth(weiToEth(record.value))} to ${receiver} | ${result}${fee}`,
               record.hash
-            )}`;
+            );
             walletHistoryList.append(row);
           }
         } catch (error) {
@@ -868,9 +941,12 @@
         paymentReceiptDate.textContent = `Date/time: ${formatLocalDateTime(submittedAt)}`;
         paymentReceiptFrom.textContent = `From: ${formatEthAddress(connectedEthAddress)}`;
         paymentReceiptTo.textContent = `To: ${formatEthAddress(ethReceivingAddress)}`;
-        paymentReceiptHash.textContent = `Transaction: ${transactionHash}${
-          gasFeeEth ? ` | network fee ${formatEth(gasFeeEth)}` : " | network fee pending"
-        }`;
+        paymentReceiptHash.textContent = "";
+        appendEtherscanLink(
+          paymentReceiptHash,
+          `Transaction${gasFeeEth ? ` | network fee ${formatEth(gasFeeEth)}` : " | network fee pending"}`,
+          transactionHash
+        );
         paymentReceiptPanel.hidden = false;
       };
 
@@ -913,6 +989,7 @@
 
         try {
           payEthButton.disabled = true;
+          startMarkerCountdown(paymentTransferMarker, "Payment marker", 120);
           setStatus("confirm payment in wallet...");
           const transactionHash = await window.ethereum.request({
             method: "eth_sendTransaction",
@@ -936,8 +1013,13 @@
               ? "payment received successfully. thank you for payment!"
               : "payment submitted; confirmation pending."
           );
+          stopMarkerCountdown(
+            paymentTransferMarker,
+            receipt?.status === "0x1" ? "Payment marker: confirmed" : "Payment marker: submitted, pending"
+          );
         } catch (error) {
           console.error("ETH payment failed:", error);
+          stopMarkerCountdown(paymentTransferMarker, "Payment marker: not completed");
           setStatus("ETH payment was not completed.", true);
         } finally {
           setEthState();
