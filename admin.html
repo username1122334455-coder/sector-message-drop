@@ -236,6 +236,11 @@
         display: none;
       }
 
+      .payment-receipt {
+        border-color: rgba(110, 218, 255, 0.38);
+        background: rgba(125, 140, 255, 0.07);
+      }
+
       .actions[hidden] {
         display: none;
       }
@@ -300,8 +305,8 @@
             <button id="uploadMediaButton" type="button">Submit File</button>
           </div>
           <div class="receipt-grid" id="receiptPanel" hidden>
-            <code id="receiptLabel">RECEIPT: MEDIA-SUBMISSION-RECEIVED</code>
-            <code id="tokenLabel">TOKEN-ACCESS-001</code>
+            <code id="receiptLabel">RECEIPT: PENDING</code>
+            <code id="tokenLabel">TOKEN PENDING</code>
           </div>
           <div class="actions" id="receiptActions" hidden>
             <button id="copyReceiptButton" type="button">Copy Receipt</button>
@@ -318,6 +323,7 @@
           <div class="eth-rate-grid" aria-label="Live ETH pricing">
             <code id="ethPriceLabel">ETH/USD loading...</code>
             <code id="ethEstimateLabel">Estimated USD $0.00</code>
+            <code id="ethLimitLabel">Level 1 limit: under $5,000</code>
           </div>
           <label class="eth-amount">
             ETH amount to send
@@ -325,7 +331,18 @@
           </label>
           <div class="actions">
             <button id="connectWalletButton" type="button">Connect Wallet</button>
+            <button id="disconnectWalletButton" type="button">Disconnect Wallet</button>
             <button id="payEthButton" type="button">Send ETH</button>
+          </div>
+          <div class="receipt-grid payment-receipt" id="paymentReceiptPanel" hidden>
+            <code>Thank you for payment!</code>
+            <code id="paymentReceiptStatus">Payment status pending</code>
+            <code id="paymentReceiptAmount">Amount pending</code>
+            <code id="paymentReceiptUsd">Estimated USD pending</code>
+            <code id="paymentReceiptDate">Date pending</code>
+            <code id="paymentReceiptFrom">From wallet pending</code>
+            <code id="paymentReceiptTo">Receiver pending</code>
+            <code id="paymentReceiptHash">Transaction pending</code>
           </div>
         </article>
 
@@ -369,9 +386,19 @@
       const ethFullReceiverLabel = document.querySelector("#ethFullReceiverLabel");
       const ethPriceLabel = document.querySelector("#ethPriceLabel");
       const ethEstimateLabel = document.querySelector("#ethEstimateLabel");
+      const ethLimitLabel = document.querySelector("#ethLimitLabel");
       const ethAmountInput = document.querySelector("#ethAmountInput");
       const connectWalletButton = document.querySelector("#connectWalletButton");
+      const disconnectWalletButton = document.querySelector("#disconnectWalletButton");
       const payEthButton = document.querySelector("#payEthButton");
+      const paymentReceiptPanel = document.querySelector("#paymentReceiptPanel");
+      const paymentReceiptStatus = document.querySelector("#paymentReceiptStatus");
+      const paymentReceiptAmount = document.querySelector("#paymentReceiptAmount");
+      const paymentReceiptUsd = document.querySelector("#paymentReceiptUsd");
+      const paymentReceiptDate = document.querySelector("#paymentReceiptDate");
+      const paymentReceiptFrom = document.querySelector("#paymentReceiptFrom");
+      const paymentReceiptTo = document.querySelector("#paymentReceiptTo");
+      const paymentReceiptHash = document.querySelector("#paymentReceiptHash");
       const status = document.querySelector("#status");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -382,10 +409,11 @@
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
       const fileBucketName = "drop-admin-files";
-      const submissionReceipt = "RECEIPT: MEDIA-SUBMISSION-RECEIVED";
-      const submissionToken = "TOKEN-ACCESS-001";
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
       const ethPriceUrl = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd";
+      const levelOneUsdLimit = 5000;
+      let currentReceipt = "RECEIPT: PENDING";
+      let currentToken = "TOKEN PENDING";
       let connectedEthAddress = "";
       let ethUsdPrice = 0;
 
@@ -407,6 +435,24 @@
           .replace(/^-|-$/g, "")
           .slice(0, 90) || "submission";
 
+      const updateReceiptLabels = (receipt, token) => {
+        currentReceipt = receipt;
+        currentToken = token;
+        receiptLabel.textContent = currentReceipt;
+        tokenLabel.textContent = currentToken;
+      };
+
+      const recordMediaSubmission = async (filePath) => {
+        const { data, error } = await client.rpc("record_admin_media_submission", {
+          p_file_path: filePath,
+        });
+
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.message || "receipt counter failed");
+
+        return data;
+      };
+
       const uploadMediaFile = async () => {
         const file = mediaFileInput.files?.[0];
         if (!file) {
@@ -422,7 +468,7 @@
         uploadMediaButton.disabled = true;
         setStatus("submitting file...");
 
-        const path = `${submissionToken}/${Date.now()}-${safeFileName(file.name)}`;
+        const path = `incoming/${Date.now()}-${safeFileName(file.name)}`;
         const { error } = await client.storage.from(fileBucketName).upload(path, file, {
           cacheControl: "3600",
           upsert: false,
@@ -438,6 +484,15 @@
           }
 
           setStatus("file upload failed. Check Supabase storage bucket/policies.", true);
+          return;
+        }
+
+        try {
+          const record = await recordMediaSubmission(path);
+          updateReceiptLabels(record.receipt, record.token);
+        } catch (error) {
+          console.error("Receipt counter failed:", error);
+          setStatus("file submitted. receipt counter unavailable; run updated SQL.", true);
           return;
         }
 
@@ -458,6 +513,14 @@
         return !!amount && Number.isFinite(Number(amount)) && Number(amount) > 0;
       };
 
+      const getEstimatedUsd = () => {
+        const amount = Number(getEthAmount());
+        if (!ethUsdPrice || !Number.isFinite(amount) || amount <= 0) return 0;
+        return amount * ethUsdPrice;
+      };
+
+      const isWithinLevelOneLimit = () => getEstimatedUsd() > 0 && getEstimatedUsd() < levelOneUsdLimit;
+
       const formatUsd = (value) =>
         new Intl.NumberFormat("en-US", {
           style: "currency",
@@ -465,14 +528,24 @@
           maximumFractionDigits: 2,
         }).format(value);
 
+      const formatLocalDateTime = (date) =>
+        new Intl.DateTimeFormat("en-US", {
+          dateStyle: "medium",
+          timeStyle: "medium",
+        }).format(date);
+
       const updateEthEstimate = () => {
-        const amount = Number(getEthAmount());
-        if (!ethUsdPrice || !Number.isFinite(amount) || amount <= 0) {
+        const estimate = getEstimatedUsd();
+        if (!estimate) {
           ethEstimateLabel.textContent = "Estimated USD $0.00";
+          ethLimitLabel.textContent = `Level 1 limit: under ${formatUsd(levelOneUsdLimit)}`;
           return;
         }
 
-        ethEstimateLabel.textContent = `Estimated USD ${formatUsd(amount * ethUsdPrice)}`;
+        ethEstimateLabel.textContent = `Estimated USD ${formatUsd(estimate)}`;
+        ethLimitLabel.textContent = isWithinLevelOneLimit()
+          ? `Level 1 eligible: ${formatUsd(levelOneUsdLimit - estimate)} remaining`
+          : `Level 1 limit exceeded: keep under ${formatUsd(levelOneUsdLimit)}`;
       };
 
       const setEthState = () => {
@@ -486,7 +559,9 @@
           ? `ETH only ${ethReceivingAddress}`
           : "receiver address pending";
         updateEthEstimate();
-        payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress() || !isValidEthAmount();
+        disconnectWalletButton.disabled = !connectedEthAddress;
+        payEthButton.disabled =
+          !connectedEthAddress || !isConfiguredEthAddress() || !isValidEthAmount() || !isWithinLevelOneLimit();
       };
 
       const loadEthPrice = async () => {
@@ -527,6 +602,13 @@
         setStatus(connectedEthAddress ? "wallet connected." : "wallet connection failed.", !connectedEthAddress);
       };
 
+      const disconnectWallet = async () => {
+        connectedEthAddress = "";
+        paymentReceiptPanel.hidden = true;
+        setEthState();
+        setStatus("wallet disconnected.");
+      };
+
       const parseEtherToWeiHex = (amount) => {
         const trimmed = amount.trim();
         if (!trimmed) return "";
@@ -535,6 +617,34 @@
         const paddedFraction = `${fraction}000000000000000000`.slice(0, 18);
         const wei = BigInt(whole || "0") * 1000000000000000000n + BigInt(paddedFraction || "0");
         return `0x${wei.toString(16)}`;
+      };
+
+      const waitForTransactionReceipt = async (transactionHash) => {
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          const receipt = await window.ethereum.request({
+            method: "eth_getTransactionReceipt",
+            params: [transactionHash],
+          });
+
+          if (receipt) return receipt;
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+
+        return null;
+      };
+
+      const showPaymentReceipt = ({ amount, estimatedUsd, transactionHash, receipt, submittedAt }) => {
+        const isConfirmed = receipt?.status === "0x1";
+        paymentReceiptStatus.textContent = isConfirmed
+          ? "Payment received successfully. Thank you for payment!"
+          : "Payment submitted. Confirmation still pending.";
+        paymentReceiptAmount.textContent = `Amount received: ${amount} ETH`;
+        paymentReceiptUsd.textContent = `Estimated USD: ${formatUsd(estimatedUsd)}`;
+        paymentReceiptDate.textContent = `Date/time: ${formatLocalDateTime(submittedAt)}`;
+        paymentReceiptFrom.textContent = `From: ${formatEthAddress(connectedEthAddress)}`;
+        paymentReceiptTo.textContent = `To: ${formatEthAddress(ethReceivingAddress)}`;
+        paymentReceiptHash.textContent = `Transaction: ${transactionHash}`;
+        paymentReceiptPanel.hidden = false;
       };
 
       const payEther = async () => {
@@ -559,17 +669,43 @@
           return;
         }
 
+        if (!isWithinLevelOneLimit()) {
+          setEthState();
+          setStatus("level 1 payment must stay under $5,000.", true);
+          return;
+        }
+
+        const amount = getEthAmount();
+        const estimatedUsd = getEstimatedUsd();
+        const submittedAt = new Date();
         const transaction = {
           from: connectedEthAddress,
           to: ethReceivingAddress,
-          value: parseEtherToWeiHex(getEthAmount()),
+          value: parseEtherToWeiHex(amount),
         };
 
-        await window.ethereum.request({
-          method: "eth_sendTransaction",
-          params: [transaction],
-        });
-        setStatus("ETH payment submitted in wallet.");
+        try {
+          payEthButton.disabled = true;
+          setStatus("confirm payment in wallet...");
+          const transactionHash = await window.ethereum.request({
+            method: "eth_sendTransaction",
+            params: [transaction],
+          });
+          setStatus("payment submitted. waiting for confirmation...");
+
+          const receipt = await waitForTransactionReceipt(transactionHash);
+          showPaymentReceipt({ amount, estimatedUsd, transactionHash, receipt, submittedAt });
+          setStatus(
+            receipt?.status === "0x1"
+              ? "payment received successfully. thank you for payment!"
+              : "payment submitted; confirmation pending."
+          );
+        } catch (error) {
+          console.error("ETH payment failed:", error);
+          setStatus("ETH payment was not completed.", true);
+        } finally {
+          setEthState();
+        }
       };
 
       const unlockAdmin = () => {
@@ -585,13 +721,13 @@
         adminPassword.value = "";
       };
 
-      receiptLabel.textContent = submissionReceipt;
-      tokenLabel.textContent = submissionToken;
+      updateReceiptLabels(currentReceipt, currentToken);
       uploadMediaButton.addEventListener("click", uploadMediaFile);
-      copyReceiptButton.addEventListener("click", () => copyPlainText(submissionReceipt, "receipt"));
-      copyTokenButton.addEventListener("click", () => copyPlainText(submissionToken, "token"));
+      copyReceiptButton.addEventListener("click", () => copyPlainText(currentReceipt, "receipt"));
+      copyTokenButton.addEventListener("click", () => copyPlainText(currentToken, "token"));
       ethAmountInput.addEventListener("input", setEthState);
       connectWalletButton.addEventListener("click", connectWallet);
+      disconnectWalletButton.addEventListener("click", disconnectWallet);
       payEthButton.addEventListener("click", payEther);
       logoutButton.addEventListener("click", lockAdmin);
       loginForm.addEventListener("submit", async (event) => {
