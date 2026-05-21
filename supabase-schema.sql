@@ -357,16 +357,4 @@ for insert
 to anon, authenticated
 with check (bucket_id = 'drop-admin-files');
 
-create policy "Admin files can be listed"
-on storage.objects
-for select
-to anon, authenticated
-using (bucket_id = 'drop-admin-files');
-
-create policy "Admin files can be read"
-on storage.objects
-for select
-to anon, authenticated
-using (bucket_id = 'drop-admin-files');
-
 notify pgrst, 'reload schema';

@@ -166,7 +166,12 @@
       }
 
       .file-picker {
+        display: grid;
+        gap: 8px;
         border: 1px dashed rgba(255, 194, 91, 0.32);
+        border-radius: 8px;
+        margin-top: 12px;
+        padding: 12px;
         background: rgba(255, 138, 61, 0.035);
       }
 
@@ -177,10 +182,18 @@
         margin-top: 12px;
       }
 
-      .token-grid {
+      .receipt-grid {
         display: grid;
         gap: 10px;
         margin-top: 12px;
+      }
+
+      .receipt-grid[hidden] {
+        display: none;
+      }
+
+      .actions[hidden] {
+        display: none;
       }
 
       code {
@@ -229,13 +242,20 @@
 
       <section class="console" aria-label="Media admin console">
         <article class="panel">
-          <h2>Submission Receipt</h2>
-          <p class="muted">Release this receipt after submission. Token is fixed, not random.</p>
-          <div class="token-grid">
-            <code id="receiptLabel">MEDIA-SUBMISSION-RECEIVED</code>
+          <h2>Picture / Video Submission</h2>
+          <p class="muted">Upload one photo or video. Files are stored in Supabase only and are not listed here.</p>
+          <label class="file-picker">
+            Choose media file
+            <input id="mediaFileInput" type="file" accept="image/*,video/*" />
+          </label>
+          <div class="actions">
+            <button id="uploadMediaButton" type="button">Submit File</button>
+          </div>
+          <div class="receipt-grid" id="receiptPanel" hidden>
+            <code id="receiptLabel">RECEIPT: MEDIA-SUBMISSION-RECEIVED</code>
             <code id="tokenLabel">TOKEN-ACCESS-001</code>
           </div>
-          <div class="actions">
+          <div class="actions" id="receiptActions" hidden>
             <button id="copyReceiptButton" type="button">Copy Receipt</button>
             <button id="copyTokenButton" type="button">Copy Token</button>
           </div>
@@ -273,7 +293,16 @@
       <p class="status" id="loginStatus"></p>
     </form>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+      const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+      const mediaFileInput = document.querySelector("#mediaFileInput");
+      const uploadMediaButton = document.querySelector("#uploadMediaButton");
+      const receiptPanel = document.querySelector("#receiptPanel");
+      const receiptActions = document.querySelector("#receiptActions");
       const receiptLabel = document.querySelector("#receiptLabel");
       const tokenLabel = document.querySelector("#tokenLabel");
       const copyReceiptButton = document.querySelector("#copyReceiptButton");
@@ -291,7 +320,8 @@
       const adminShell = document.querySelector("main");
       const adminSessionKey = "drop-admin-unlocked";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
-      const submissionReceipt = "MEDIA-SUBMISSION-RECEIVED";
+      const fileBucketName = "drop-admin-files";
+      const submissionReceipt = "RECEIPT: MEDIA-SUBMISSION-RECEIVED";
       const submissionToken = "TOKEN-ACCESS-001";
       const ethReceivingAddress = "PASTE_ETH_RECEIVING_ADDRESS_HERE";
       const ethDonationAmount = "";
@@ -305,6 +335,54 @@
       const copyPlainText = async (text, label) => {
         await navigator.clipboard.writeText(text);
         setStatus(`${label} copied.`);
+      };
+
+      const safeFileName = (name) =>
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9.\-_]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 90) || "submission";
+
+      const uploadMediaFile = async () => {
+        const file = mediaFileInput.files?.[0];
+        if (!file) {
+          setStatus("choose a photo or video first.", true);
+          return;
+        }
+
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+          setStatus("only photo or video files are accepted.", true);
+          return;
+        }
+
+        uploadMediaButton.disabled = true;
+        setStatus("submitting file...");
+
+        const path = `${submissionToken}/${Date.now()}-${safeFileName(file.name)}`;
+        const { error } = await client.storage.from(fileBucketName).upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+        uploadMediaButton.disabled = false;
+
+        if (error) {
+          console.error("Media upload failed:", error);
+          if (/bucket not found/i.test(error.message || "")) {
+            setStatus("storage bucket missing. Run the drop-admin-files SQL in Supabase.", true);
+            return;
+          }
+
+          setStatus("file upload failed. Check Supabase storage bucket/policies.", true);
+          return;
+        }
+
+        mediaFileInput.value = "";
+        receiptPanel.hidden = false;
+        receiptActions.hidden = false;
+        setStatus("file submitted. receipt released.");
       };
 
       const isConfiguredEthAddress = () => /^0x[a-fA-F0-9]{40}$/.test(ethReceivingAddress);
@@ -398,6 +476,7 @@
 
       receiptLabel.textContent = submissionReceipt;
       tokenLabel.textContent = submissionToken;
+      uploadMediaButton.addEventListener("click", uploadMediaFile);
       copyReceiptButton.addEventListener("click", () => copyPlainText(submissionReceipt, "receipt"));
       copyTokenButton.addEventListener("click", () => copyPlainText(submissionToken, "token"));
       connectWalletButton.addEventListener("click", connectWallet);
