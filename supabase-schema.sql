@@ -424,4 +424,157 @@ grant execute on function public.record_admin_media_submission(text) to authenti
 grant execute on function public.get_admin_media_submission_count() to anon;
 grant execute on function public.get_admin_media_submission_count() to authenticated;
 
+create table if not exists public.eth_payment_receipts (
+  id bigserial primary key,
+  tx_hash text not null unique,
+  from_wallet text not null,
+  to_wallet text not null,
+  amount_eth numeric(36, 18) not null,
+  estimated_usd numeric(18, 2),
+  eth_usd_price numeric(18, 2),
+  gas_fee_eth numeric(36, 18),
+  gas_fee_usd numeric(18, 2),
+  status text not null,
+  confirmed boolean not null default false,
+  submitted_at timestamptz not null default now(),
+  recorded_at timestamptz not null default now()
+);
+
+alter table public.eth_payment_receipts enable row level security;
+
+drop function if exists public.record_eth_payment_receipt(text, text, text, numeric, numeric, numeric, numeric, numeric, text, boolean, timestamptz);
+drop function if exists public.get_eth_payment_records(text);
+
+create or replace function public.record_eth_payment_receipt(
+  p_tx_hash text,
+  p_from_wallet text,
+  p_to_wallet text,
+  p_amount_eth numeric,
+  p_estimated_usd numeric,
+  p_eth_usd_price numeric,
+  p_gas_fee_eth numeric,
+  p_gas_fee_usd numeric,
+  p_status text,
+  p_confirmed boolean,
+  p_submitted_at timestamptz
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id bigint;
+begin
+  if p_tx_hash is null or length(trim(p_tx_hash)) = 0 then
+    return jsonb_build_object('ok', false, 'message', 'Missing transaction hash.');
+  end if;
+
+  insert into public.eth_payment_receipts (
+    tx_hash,
+    from_wallet,
+    to_wallet,
+    amount_eth,
+    estimated_usd,
+    eth_usd_price,
+    gas_fee_eth,
+    gas_fee_usd,
+    status,
+    confirmed,
+    submitted_at
+  )
+  values (
+    lower(trim(p_tx_hash)),
+    lower(trim(p_from_wallet)),
+    lower(trim(p_to_wallet)),
+    p_amount_eth,
+    p_estimated_usd,
+    p_eth_usd_price,
+    p_gas_fee_eth,
+    p_gas_fee_usd,
+    coalesce(nullif(trim(p_status), ''), 'submitted'),
+    coalesce(p_confirmed, false),
+    coalesce(p_submitted_at, now())
+  )
+  on conflict (tx_hash) do update
+  set
+    from_wallet = excluded.from_wallet,
+    to_wallet = excluded.to_wallet,
+    amount_eth = excluded.amount_eth,
+    estimated_usd = excluded.estimated_usd,
+    eth_usd_price = excluded.eth_usd_price,
+    gas_fee_eth = excluded.gas_fee_eth,
+    gas_fee_usd = excluded.gas_fee_usd,
+    status = excluded.status,
+    confirmed = excluded.confirmed,
+    submitted_at = excluded.submitted_at,
+    recorded_at = now()
+  returning id into v_id;
+
+  return jsonb_build_object('ok', true, 'id', v_id);
+end;
+$$;
+
+create or replace function public.get_eth_payment_records(
+  p_wallet text
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  with filtered as (
+    select *
+    from public.eth_payment_receipts
+    where lower(from_wallet) = lower(trim(p_wallet))
+    order by submitted_at desc
+    limit 25
+  ),
+  totals as (
+    select
+      count(*) as record_count,
+      coalesce(sum(amount_eth), 0) as total_amount_eth,
+      coalesce(sum(estimated_usd), 0) as total_estimated_usd,
+      coalesce(sum(gas_fee_eth), 0) as total_gas_fee_eth,
+      coalesce(sum(gas_fee_usd), 0) as total_gas_fee_usd
+    from public.eth_payment_receipts
+    where lower(from_wallet) = lower(trim(p_wallet))
+  )
+  select jsonb_build_object(
+    'ok', true,
+    'summary', jsonb_build_object(
+      'count', totals.record_count,
+      'total_amount_eth', totals.total_amount_eth,
+      'total_estimated_usd', totals.total_estimated_usd,
+      'total_gas_fee_eth', totals.total_gas_fee_eth,
+      'total_gas_fee_usd', totals.total_gas_fee_usd
+    ),
+    'records', coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'tx_hash', tx_hash,
+            'amount_eth', amount_eth,
+            'estimated_usd', estimated_usd,
+            'gas_fee_eth', gas_fee_eth,
+            'gas_fee_usd', gas_fee_usd,
+            'status', status,
+            'confirmed', confirmed,
+            'submitted_at', submitted_at
+          )
+          order by submitted_at desc
+        )
+        from filtered
+      ),
+      '[]'::jsonb
+    )
+  )
+  from totals;
+$$;
+
+grant execute on function public.record_eth_payment_receipt(text, text, text, numeric, numeric, numeric, numeric, numeric, text, boolean, timestamptz) to anon;
+grant execute on function public.record_eth_payment_receipt(text, text, text, numeric, numeric, numeric, numeric, numeric, text, boolean, timestamptz) to authenticated;
+grant execute on function public.get_eth_payment_records(text) to anon;
+grant execute on function public.get_eth_payment_records(text) to authenticated;
+
 notify pgrst, 'reload schema';

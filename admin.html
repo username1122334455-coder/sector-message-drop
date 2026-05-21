@@ -241,6 +241,11 @@
         background: rgba(125, 140, 255, 0.07);
       }
 
+      .history-list {
+        display: grid;
+        gap: 8px;
+      }
+
       .actions[hidden] {
         display: none;
       }
@@ -344,6 +349,14 @@
             <code id="paymentReceiptTo">Receiver pending</code>
             <code id="paymentReceiptHash">Transaction pending</code>
           </div>
+          <div class="receipt-grid payment-receipt" id="paymentHistoryPanel">
+            <code id="paymentHistorySummary">Sent funds records: connect wallet to load.</code>
+            <code id="paymentHistoryTotals">Total sent: 0 ETH / $0.00</code>
+            <code id="paymentHistoryFees">Network fees: 0 ETH / $0.00</code>
+            <div class="history-list" id="paymentHistoryList">
+              <code>No sent funds records loaded.</code>
+            </div>
+          </div>
         </article>
 
         <p class="status" id="status">ready</p>
@@ -399,6 +412,10 @@
       const paymentReceiptFrom = document.querySelector("#paymentReceiptFrom");
       const paymentReceiptTo = document.querySelector("#paymentReceiptTo");
       const paymentReceiptHash = document.querySelector("#paymentReceiptHash");
+      const paymentHistorySummary = document.querySelector("#paymentHistorySummary");
+      const paymentHistoryTotals = document.querySelector("#paymentHistoryTotals");
+      const paymentHistoryFees = document.querySelector("#paymentHistoryFees");
+      const paymentHistoryList = document.querySelector("#paymentHistoryList");
       const status = document.querySelector("#status");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -534,6 +551,12 @@
           timeStyle: "medium",
         }).format(date);
 
+      const formatEth = (value) => {
+        const number = Number(value || 0);
+        if (!Number.isFinite(number)) return "0 ETH";
+        return `${number.toFixed(number >= 1 ? 6 : 8).replace(/\.?0+$/, "")} ETH`;
+      };
+
       const updateEthEstimate = () => {
         const estimate = getEstimatedUsd();
         if (!estimate) {
@@ -562,6 +585,59 @@
         disconnectWalletButton.disabled = !connectedEthAddress;
         payEthButton.disabled =
           !connectedEthAddress || !isConfiguredEthAddress() || !isValidEthAmount() || !isWithinLevelOneLimit();
+      };
+
+      const renderPaymentHistory = (data) => {
+        const summary = data?.summary || {};
+        const records = data?.records || [];
+        paymentHistorySummary.textContent = `Sent funds records: ${summary.count || 0}`;
+        paymentHistoryTotals.textContent = `Total sent: ${formatEth(summary.total_amount_eth)} / ${formatUsd(
+          Number(summary.total_estimated_usd || 0)
+        )}`;
+        paymentHistoryFees.textContent = `Network fees: ${formatEth(summary.total_gas_fee_eth)} / ${formatUsd(
+          Number(summary.total_gas_fee_usd || 0)
+        )}`;
+        paymentHistoryList.textContent = "";
+
+        if (!records.length) {
+          const emptyRow = document.createElement("code");
+          emptyRow.textContent = "No sent funds records for this wallet yet.";
+          paymentHistoryList.append(emptyRow);
+          return;
+        }
+
+        for (const record of records) {
+          const row = document.createElement("code");
+          const date = record.submitted_at ? formatLocalDateTime(new Date(record.submitted_at)) : "date pending";
+          const fee = record.gas_fee_eth ? ` fee ${formatEth(record.gas_fee_eth)}` : " fee pending";
+          row.textContent = `${date} | ${formatEth(record.amount_eth)} | ${formatUsd(
+            Number(record.estimated_usd || 0)
+          )} | ${record.status}${fee} | ${formatEthAddress(record.tx_hash)}`;
+          paymentHistoryList.append(row);
+        }
+      };
+
+      const loadPaymentHistory = async () => {
+        if (!connectedEthAddress) {
+          paymentHistorySummary.textContent = "Sent funds records: connect wallet to load.";
+          paymentHistoryTotals.textContent = "Total sent: 0 ETH / $0.00";
+          paymentHistoryFees.textContent = "Network fees: 0 ETH / $0.00";
+          paymentHistoryList.innerHTML = "<code>No sent funds records loaded.</code>";
+          return;
+        }
+
+        const { data, error } = await client.rpc("get_eth_payment_records", {
+          p_wallet: connectedEthAddress,
+        });
+
+        if (error) {
+          console.error("Payment records failed:", error);
+          paymentHistorySummary.textContent = "Sent funds records unavailable. Run updated SQL.";
+          paymentHistoryList.innerHTML = "<code>Payment records unavailable.</code>";
+          return;
+        }
+
+        renderPaymentHistory(data);
       };
 
       const loadEthPrice = async () => {
@@ -599,6 +675,7 @@
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         connectedEthAddress = accounts?.[0] || "";
         setEthState();
+        loadPaymentHistory();
         setStatus(connectedEthAddress ? "wallet connected." : "wallet connection failed.", !connectedEthAddress);
       };
 
@@ -606,6 +683,7 @@
         connectedEthAddress = "";
         paymentReceiptPanel.hidden = true;
         setEthState();
+        loadPaymentHistory();
         setStatus("wallet disconnected.");
       };
 
@@ -633,8 +711,39 @@
         return null;
       };
 
+      const hexToEth = (value) => {
+        if (!value) return null;
+        return Number(BigInt(value)) / 1e18;
+      };
+
+      const getNetworkFeeEth = (receipt) => {
+        if (!receipt?.gasUsed || !receipt?.effectiveGasPrice) return null;
+        return hexToEth(`0x${(BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice)).toString(16)}`);
+      };
+
+      const recordEthPayment = async ({ amount, estimatedUsd, transactionHash, receipt, submittedAt }) => {
+        const gasFeeEth = getNetworkFeeEth(receipt);
+        const statusText = receipt?.status === "0x1" ? "confirmed" : "submitted";
+        const { error } = await client.rpc("record_eth_payment_receipt", {
+          p_tx_hash: transactionHash,
+          p_from_wallet: connectedEthAddress,
+          p_to_wallet: ethReceivingAddress,
+          p_amount_eth: Number(amount),
+          p_estimated_usd: Number(estimatedUsd.toFixed(2)),
+          p_eth_usd_price: Number(ethUsdPrice.toFixed(2)),
+          p_gas_fee_eth: gasFeeEth,
+          p_gas_fee_usd: gasFeeEth ? Number((gasFeeEth * ethUsdPrice).toFixed(2)) : null,
+          p_status: statusText,
+          p_confirmed: receipt?.status === "0x1",
+          p_submitted_at: submittedAt.toISOString(),
+        });
+
+        if (error) throw error;
+      };
+
       const showPaymentReceipt = ({ amount, estimatedUsd, transactionHash, receipt, submittedAt }) => {
         const isConfirmed = receipt?.status === "0x1";
+        const gasFeeEth = getNetworkFeeEth(receipt);
         paymentReceiptStatus.textContent = isConfirmed
           ? "Payment received successfully. Thank you for payment!"
           : "Payment submitted. Confirmation still pending.";
@@ -643,7 +752,9 @@
         paymentReceiptDate.textContent = `Date/time: ${formatLocalDateTime(submittedAt)}`;
         paymentReceiptFrom.textContent = `From: ${formatEthAddress(connectedEthAddress)}`;
         paymentReceiptTo.textContent = `To: ${formatEthAddress(ethReceivingAddress)}`;
-        paymentReceiptHash.textContent = `Transaction: ${transactionHash}`;
+        paymentReceiptHash.textContent = `Transaction: ${transactionHash}${
+          gasFeeEth ? ` | network fee ${formatEth(gasFeeEth)}` : " | network fee pending"
+        }`;
         paymentReceiptPanel.hidden = false;
       };
 
@@ -695,6 +806,14 @@
 
           const receipt = await waitForTransactionReceipt(transactionHash);
           showPaymentReceipt({ amount, estimatedUsd, transactionHash, receipt, submittedAt });
+          try {
+            await recordEthPayment({ amount, estimatedUsd, transactionHash, receipt, submittedAt });
+            await loadPaymentHistory();
+          } catch (recordError) {
+            console.error("ETH payment record failed:", recordError);
+            setStatus("payment completed; record storage unavailable. Run updated SQL.", true);
+            return;
+          }
           setStatus(
             receipt?.status === "0x1"
               ? "payment received successfully. thank you for payment!"
@@ -746,6 +865,7 @@
       });
 
       setEthState();
+      loadPaymentHistory();
       loadEthPrice();
       setInterval(loadEthPrice, 120000);
 
