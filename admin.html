@@ -255,6 +255,10 @@
         display: block;
       }
 
+      .eth-amount {
+        margin-top: 12px;
+      }
+
       .status {
         min-height: 20px;
         color: var(--muted);
@@ -304,6 +308,11 @@
           <p class="warning">Ethereum based receiving address will only accept ETH. Other funds may be lost.</p>
           <code id="ethWalletLabel">Wallet not connected</code>
           <code id="ethReceiverLabel">Set ETH receiving address</code>
+          <code id="ethFullReceiverLabel">Receiver address pending</code>
+          <label class="eth-amount">
+            ETH amount to send
+            <input id="ethAmountInput" type="number" inputmode="decimal" min="0.000001" step="0.000001" placeholder="0.01" />
+          </label>
           <div class="actions">
             <button id="connectWalletButton" type="button">Connect Wallet</button>
             <button id="payEthButton" type="button">Send ETH</button>
@@ -347,6 +356,8 @@
       const copyTokenButton = document.querySelector("#copyTokenButton");
       const ethWalletLabel = document.querySelector("#ethWalletLabel");
       const ethReceiverLabel = document.querySelector("#ethReceiverLabel");
+      const ethFullReceiverLabel = document.querySelector("#ethFullReceiverLabel");
+      const ethAmountInput = document.querySelector("#ethAmountInput");
       const connectWalletButton = document.querySelector("#connectWalletButton");
       const payEthButton = document.querySelector("#payEthButton");
       const status = document.querySelector("#status");
@@ -362,7 +373,6 @@
       const submissionReceipt = "RECEIPT: MEDIA-SUBMISSION-RECEIVED";
       const submissionToken = "TOKEN-ACCESS-001";
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
-      const ethDonationAmount = "";
       let connectedEthAddress = "";
 
       const setStatus = (message, isError = false) => {
@@ -427,14 +437,24 @@
 
       const formatEthAddress = (address) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
+      const getEthAmount = () => ethAmountInput.value.trim();
+
+      const isValidEthAmount = () => {
+        const amount = getEthAmount();
+        return !!amount && Number.isFinite(Number(amount)) && Number(amount) > 0;
+      };
+
       const setEthState = () => {
         ethWalletLabel.textContent = connectedEthAddress
-          ? `connected ${formatEthAddress(connectedEthAddress)}`
+          ? `connected wallet ${formatEthAddress(connectedEthAddress)}`
           : "wallet not connected";
         ethReceiverLabel.textContent = isConfiguredEthAddress()
           ? `receiver ${formatEthAddress(ethReceivingAddress)}`
           : "receiver pending";
-        payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress();
+        ethFullReceiverLabel.textContent = isConfiguredEthAddress()
+          ? `ETH only ${ethReceivingAddress}`
+          : "receiver address pending";
+        payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress() || !isValidEthAmount();
       };
 
       const hashCredentials = async (username, password) => {
@@ -479,18 +499,21 @@
 
         if (!connectedEthAddress || !isConfiguredEthAddress()) {
           setEthState();
-          setStatus("ETH donation is not ready. Configure receiving address first.", true);
+          setStatus("ETH payment is not ready. Connect wallet first.", true);
+          return;
+        }
+
+        if (!isValidEthAmount()) {
+          setEthState();
+          setStatus("enter an ETH amount first.", true);
           return;
         }
 
         const transaction = {
           from: connectedEthAddress,
           to: ethReceivingAddress,
+          value: parseEtherToWeiHex(getEthAmount()),
         };
-
-        if (ethDonationAmount) {
-          transaction.value = parseEtherToWeiHex(ethDonationAmount);
-        }
 
         await window.ethereum.request({
           method: "eth_sendTransaction",
@@ -517,6 +540,7 @@
       uploadMediaButton.addEventListener("click", uploadMediaFile);
       copyReceiptButton.addEventListener("click", () => copyPlainText(submissionReceipt, "receipt"));
       copyTokenButton.addEventListener("click", () => copyPlainText(submissionToken, "token"));
+      ethAmountInput.addEventListener("input", setEthState);
       connectWalletButton.addEventListener("click", connectWallet);
       payEthButton.addEventListener("click", payEther);
       logoutButton.addEventListener("click", lockAdmin);
