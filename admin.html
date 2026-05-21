@@ -357,6 +357,14 @@
               <code>No sent funds records loaded.</code>
             </div>
           </div>
+          <div class="receipt-grid payment-receipt" id="walletHistoryPanel">
+            <code id="walletHistorySummary">Wallet on-chain history: connect wallet to load.</code>
+            <code id="walletHistoryTotals">On-chain sent: 0 ETH / $0.00</code>
+            <code id="walletHistoryFees">On-chain fees: 0 ETH / $0.00</code>
+            <div class="history-list" id="walletHistoryList">
+              <code>No wallet transactions loaded.</code>
+            </div>
+          </div>
         </article>
 
         <p class="status" id="status">ready</p>
@@ -416,6 +424,10 @@
       const paymentHistoryTotals = document.querySelector("#paymentHistoryTotals");
       const paymentHistoryFees = document.querySelector("#paymentHistoryFees");
       const paymentHistoryList = document.querySelector("#paymentHistoryList");
+      const walletHistorySummary = document.querySelector("#walletHistorySummary");
+      const walletHistoryTotals = document.querySelector("#walletHistoryTotals");
+      const walletHistoryFees = document.querySelector("#walletHistoryFees");
+      const walletHistoryList = document.querySelector("#walletHistoryList");
       const status = document.querySelector("#status");
       const logoutButton = document.querySelector("#logoutButton");
       const loginForm = document.querySelector("#loginForm");
@@ -428,6 +440,7 @@
       const fileBucketName = "drop-admin-files";
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
       const ethPriceUrl = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd";
+      const blockscoutBaseUrl = "https://eth.blockscout.com/api/v2";
       const levelOneUsdLimit = 5000;
       let currentReceipt = "RECEIPT: PENDING";
       let currentToken = "TOKEN PENDING";
@@ -557,6 +570,13 @@
         return `${number.toFixed(number >= 1 ? 6 : 8).replace(/\.?0+$/, "")} ETH`;
       };
 
+      const weiToEth = (value) => {
+        if (!value) return 0;
+        return Number(BigInt(value)) / 1e18;
+      };
+
+      const formatHistoryHash = (hash) => (hash ? `${hash.slice(0, 10)}...${hash.slice(-6)}` : "hash pending");
+
       const updateEthEstimate = () => {
         const estimate = getEstimatedUsd();
         if (!estimate) {
@@ -640,6 +660,100 @@
         renderPaymentHistory(data);
       };
 
+      const resetWalletHistory = () => {
+        walletHistorySummary.textContent = "Wallet on-chain history: connect wallet to load.";
+        walletHistoryTotals.textContent = "On-chain sent: 0 ETH / $0.00";
+        walletHistoryFees.textContent = "On-chain fees: 0 ETH / $0.00";
+        walletHistoryList.innerHTML = "<code>No wallet transactions loaded.</code>";
+      };
+
+      const buildBlockscoutUrl = (address, pageParams) => {
+        const url = new URL(`${blockscoutBaseUrl}/addresses/${address}/transactions`);
+        if (pageParams) {
+          for (const [key, value] of Object.entries(pageParams)) {
+            if (value !== null && value !== undefined) url.searchParams.set(key, value);
+          }
+        }
+
+        return url;
+      };
+
+      const loadWalletOnchainHistory = async () => {
+        if (!connectedEthAddress) {
+          resetWalletHistory();
+          return;
+        }
+
+        walletHistorySummary.textContent = "Wallet on-chain history: loading...";
+        walletHistoryList.innerHTML = "<code>Loading wallet transactions...</code>";
+
+        try {
+          const lowerWallet = connectedEthAddress.toLowerCase();
+          const records = [];
+          let pageParams = null;
+          let hasMore = false;
+
+          for (let page = 0; page < 10; page += 1) {
+            const response = await fetch(buildBlockscoutUrl(connectedEthAddress, pageParams), {
+              cache: "no-store",
+            });
+            if (!response.ok) throw new Error(`wallet history request failed ${response.status}`);
+
+            const data = await response.json();
+            records.push(...(data.items || []));
+            pageParams = data.next_page_params || null;
+            hasMore = !!pageParams;
+            if (!pageParams) break;
+          }
+
+          const sentRecords = records.filter((record) => {
+            const from = record.from?.hash?.toLowerCase();
+            return from === lowerWallet;
+          });
+          const successfulSent = sentRecords.filter((record) => (record.result || record.status) !== "error");
+          const totalEth = successfulSent.reduce((sum, record) => sum + weiToEth(record.value), 0);
+          const totalFees = sentRecords.reduce((sum, record) => sum + weiToEth(record.fee?.value), 0);
+          const totalUsd = successfulSent.reduce((sum, record) => {
+            const rate = Number(record.exchange_rate || ethUsdPrice || 0);
+            return sum + weiToEth(record.value) * (Number.isFinite(rate) ? rate : 0);
+          }, 0);
+          const totalFeeUsd = sentRecords.reduce((sum, record) => {
+            const rate = Number(record.exchange_rate || ethUsdPrice || 0);
+            return sum + weiToEth(record.fee?.value) * (Number.isFinite(rate) ? rate : 0);
+          }, 0);
+
+          walletHistorySummary.textContent = `Wallet on-chain history: ${sentRecords.length} sent transaction${
+            sentRecords.length === 1 ? "" : "s"
+          }${hasMore ? " loaded from recent pages" : ""}`;
+          walletHistoryTotals.textContent = `On-chain sent: ${formatEth(totalEth)} / ${formatUsd(totalUsd)}`;
+          walletHistoryFees.textContent = `On-chain fees: ${formatEth(totalFees)} / ${formatUsd(totalFeeUsd)}`;
+          walletHistoryList.textContent = "";
+
+          if (!sentRecords.length) {
+            const emptyRow = document.createElement("code");
+            emptyRow.textContent = "No previous sent ETH transactions found for this wallet.";
+            walletHistoryList.append(emptyRow);
+            return;
+          }
+
+          for (const record of sentRecords.slice(0, 12)) {
+            const row = document.createElement("code");
+            const date = record.timestamp ? formatLocalDateTime(new Date(record.timestamp)) : "date pending";
+            const receiver = record.to?.hash ? formatEthAddress(record.to.hash) : "receiver pending";
+            const fee = record.fee?.value ? ` fee ${formatEth(weiToEth(record.fee.value))}` : " fee pending";
+            const result = record.result || record.status || "status pending";
+            row.textContent = `${date} | sent ${formatEth(weiToEth(record.value))} to ${receiver} | ${result}${fee} | ${formatHistoryHash(
+              record.hash
+            )}`;
+            walletHistoryList.append(row);
+          }
+        } catch (error) {
+          console.error("Wallet on-chain history failed:", error);
+          walletHistorySummary.textContent = "Wallet on-chain history unavailable.";
+          walletHistoryList.innerHTML = "<code>Could not load previous wallet transactions.</code>";
+        }
+      };
+
       const loadEthPrice = async () => {
         try {
           const response = await fetch(ethPriceUrl, { cache: "no-store" });
@@ -676,6 +790,7 @@
         connectedEthAddress = accounts?.[0] || "";
         setEthState();
         loadPaymentHistory();
+        loadWalletOnchainHistory();
         setStatus(connectedEthAddress ? "wallet connected." : "wallet connection failed.", !connectedEthAddress);
       };
 
@@ -684,6 +799,7 @@
         paymentReceiptPanel.hidden = true;
         setEthState();
         loadPaymentHistory();
+        loadWalletOnchainHistory();
         setStatus("wallet disconnected.");
       };
 
@@ -809,6 +925,7 @@
           try {
             await recordEthPayment({ amount, estimatedUsd, transactionHash, receipt, submittedAt });
             await loadPaymentHistory();
+            await loadWalletOnchainHistory();
           } catch (recordError) {
             console.error("ETH payment record failed:", recordError);
             setStatus("payment completed; record storage unavailable. Run updated SQL.", true);
@@ -866,6 +983,7 @@
 
       setEthState();
       loadPaymentHistory();
+      loadWalletOnchainHistory();
       loadEthPrice();
       setInterval(loadEthPrice, 120000);
 
