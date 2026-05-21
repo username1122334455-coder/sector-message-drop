@@ -433,7 +433,7 @@
           : "wallet not connected";
         ethReceiverLabel.textContent = isConfiguredEthAddress()
           ? `receiver ${formatEthAddress(ethReceivingAddress)}`
-          : "receiving address not configured";
+          : "receiver pending";
         payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress();
       };
 
