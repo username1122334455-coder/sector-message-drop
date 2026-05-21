@@ -251,6 +251,33 @@
         gap: 8px;
       }
 
+      .history-record {
+        overflow: hidden;
+        border: 1px solid rgba(197, 167, 92, 0.22);
+        border-radius: 3px;
+        background: rgba(197, 167, 92, 0.045);
+      }
+
+      .history-record summary {
+        cursor: pointer;
+        padding: 10px 12px;
+        color: var(--accent-2);
+        font-weight: 600;
+      }
+
+      .history-record__body {
+        display: grid;
+        gap: 8px;
+        border-top: 1px solid rgba(197, 167, 92, 0.18);
+        padding: 10px;
+      }
+
+      .history-record__body code,
+      .history-list > code {
+        white-space: normal;
+        line-height: 1.5;
+      }
+
       .actions[hidden] {
         display: none;
       }
@@ -447,6 +474,7 @@
       const adminPassword = document.querySelector("#adminPassword");
       const adminShell = document.querySelector("main");
       const adminSessionKey = "drop-admin-unlocked";
+      const rememberedWalletKey = "drop-admin-wallet-remembered";
       const credentialHash = "61637012a4dc4d9f121c739c7c209d673dab5d00bb100d50e28aa2e6486de7bc";
       const fileBucketName = "drop-admin-files";
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
@@ -715,13 +743,44 @@
           return;
         }
 
-        for (const record of records) {
-          const row = document.createElement("code");
+        for (const [index, record] of records.entries()) {
+          const row = document.createElement("details");
+          row.className = "history-record";
           const date = record.submitted_at ? formatOnchainDateTime(new Date(record.submitted_at)) : "date pending";
-          const fee = record.gas_fee_eth ? ` fee ${formatEth(record.gas_fee_eth)}` : " fee pending";
-          appendEtherscanLink(row, `${date} | ${formatEth(record.amount_eth)} | ${formatUsd(
-            Number(record.estimated_usd || 0)
-          )} | ${record.status}${fee}`, record.tx_hash);
+          const submittedAt = record.submitted_at
+            ? formatLocalDateTime(new Date(record.submitted_at))
+            : "date pending";
+          const amount = formatEth(record.amount_eth);
+          const estimatedUsd = formatUsd(Number(record.estimated_usd || 0));
+          const gasFee = record.gas_fee_eth ? formatEth(record.gas_fee_eth) : "pending";
+          const gasUsd = record.gas_fee_usd ? formatUsd(Number(record.gas_fee_usd || 0)) : "pending";
+          const status = record.status || "status pending";
+          const confirmation = record.confirmed ? "confirmed" : "pending";
+          const hash = record.tx_hash || "";
+          const summaryRow = document.createElement("summary");
+          summaryRow.textContent = `Receipt ${index + 1}: ${amount} / ${estimatedUsd} | ${status}`;
+          const body = document.createElement("div");
+          body.className = "history-record__body";
+
+          for (const line of [
+            `Submitted: ${submittedAt}`,
+            `On-chain time: ${date}`,
+            `Amount sent: ${amount}`,
+            `Estimated USD: ${estimatedUsd}`,
+            `Network fee: ${gasFee} / ${gasUsd}`,
+            `Status: ${status}`,
+            `Confirmation: ${confirmation}`,
+            `Transaction hash: ${formatHistoryHash(hash)}`,
+          ]) {
+            const codeLine = document.createElement("code");
+            codeLine.textContent = line;
+            body.append(codeLine);
+          }
+
+          const linkLine = document.createElement("code");
+          appendEtherscanLink(linkLine, "Transaction record", hash);
+          body.append(linkLine);
+          row.append(summaryRow, body);
           paymentHistoryList.append(row);
         }
       };
@@ -888,6 +947,9 @@
 
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         connectedEthAddress = accounts?.[0] || "";
+        if (connectedEthAddress) {
+          localStorage.setItem(rememberedWalletKey, "true");
+        }
         setEthState();
         loadPaymentHistory();
         loadWalletOnchainHistory();
@@ -896,11 +958,53 @@
 
       const disconnectWallet = async () => {
         connectedEthAddress = "";
+        localStorage.removeItem(rememberedWalletKey);
         paymentReceiptPanel.hidden = true;
         setEthState();
         loadPaymentHistory();
         loadWalletOnchainHistory();
         setStatus("wallet disconnected.");
+      };
+
+      const restoreWalletConnection = async () => {
+        if (!window.ethereum) {
+          return;
+        }
+
+        try {
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          connectedEthAddress = accounts?.[0] || "";
+          if (!connectedEthAddress) {
+            localStorage.removeItem(rememberedWalletKey);
+            setEthState();
+            return;
+          } else {
+            localStorage.setItem(rememberedWalletKey, "true");
+          }
+          setEthState();
+          await loadPaymentHistory();
+          await loadWalletOnchainHistory();
+          setStatus("wallet restored.");
+        } catch (error) {
+          console.error("Wallet restore failed:", error);
+          localStorage.removeItem(rememberedWalletKey);
+          connectedEthAddress = "";
+          setEthState();
+        }
+      };
+
+      const handleWalletAccountsChanged = async (accounts) => {
+        connectedEthAddress = accounts?.[0] || "";
+        if (connectedEthAddress) {
+          localStorage.setItem(rememberedWalletKey, "true");
+        } else {
+          localStorage.removeItem(rememberedWalletKey);
+          paymentReceiptPanel.hidden = true;
+        }
+        setEthState();
+        await loadPaymentHistory();
+        await loadWalletOnchainHistory();
+        setStatus(connectedEthAddress ? "wallet updated." : "wallet disconnected.");
       };
 
       const parseEtherToWeiHex = (amount) => {
@@ -1094,7 +1198,11 @@
       loadPaymentHistory();
       loadWalletOnchainHistory();
       loadEthPrice();
+      restoreWalletConnection();
       setInterval(loadEthPrice, 120000);
+      if (window.ethereum?.on) {
+        window.ethereum.on("accountsChanged", handleWalletAccountsChanged);
+      }
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
         unlockAdmin();
