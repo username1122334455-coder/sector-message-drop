@@ -7,22 +7,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Stick+No+Bills:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        --bg: #060511;
-        --panel: #100b20;
-        --panel-2: #18112e;
-        --line: rgba(132, 112, 255, 0.38);
-        --line-strong: rgba(170, 150, 255, 0.78);
-        --text: #f3efff;
-        --muted: #a99fd3;
-        --accent: #7d8cff;
-        --accent-2: #dfd7ff;
-        --danger: #ffb86b;
-        font-family: "Share Tech Mono", monospace;
+        --bg: #07100d;
+        --panel: #0b1512;
+        --panel-2: #111f1b;
+        --line: rgba(197, 167, 92, 0.38);
+        --line-strong: rgba(222, 190, 112, 0.82);
+        --text: #f2ead7;
+        --muted: #b7ab91;
+        --accent: #c5a75c;
+        --accent-2: #ead6a2;
+        --danger: #e0a164;
+        font-family: "IBM Plex Mono", monospace;
       }
 
       * {
@@ -35,12 +35,12 @@
         padding: clamp(16px, 4vw, 38px);
         color: var(--text);
         background:
-          radial-gradient(circle at 18% 12%, rgba(125, 140, 255, 0.18), transparent 18rem),
-          radial-gradient(circle at 82% 0%, rgba(71, 211, 255, 0.12), transparent 22rem),
-          linear-gradient(135deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-          radial-gradient(rgba(220, 214, 255, 0.28) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(197, 167, 92, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(197, 167, 92, 0.04) 1px, transparent 1px),
+          radial-gradient(circle at 18% 12%, rgba(197, 167, 92, 0.16), transparent 18rem),
+          radial-gradient(circle at 82% 0%, rgba(35, 88, 70, 0.24), transparent 22rem),
           var(--bg);
-        background-size: auto, auto, 42px 42px, 18px 18px, auto;
+        background-size: 46px 46px, 46px 46px, auto, auto, auto;
       }
 
       main,
@@ -58,7 +58,7 @@
       h1,
       h2,
       button {
-        font-family: "Stick No Bills", "Share Tech Mono", monospace;
+        font-family: "Cinzel", "IBM Plex Mono", serif;
       }
 
       h1 {
@@ -78,11 +78,11 @@
       button {
         min-height: 42px;
         border: 1px solid var(--line-strong);
-        border-radius: 8px;
+        border-radius: 3px;
         padding: 9px 14px;
-        background: linear-gradient(180deg, #f0ecff, #8d9aff);
-        box-shadow: 0 7px 0 rgba(38, 31, 94, 0.86), 0 0 22px rgba(125, 140, 255, 0.26);
-        color: #080617;
+        background: linear-gradient(180deg, #f1d98e, #b98b33);
+        box-shadow: 0 5px 0 rgba(54, 42, 19, 0.9), 0 0 20px rgba(197, 167, 92, 0.18);
+        color: #09110e;
         cursor: pointer;
         font-size: 1rem;
         font-weight: 700;
@@ -98,11 +98,11 @@
       input {
         width: 100%;
         min-height: 46px;
-        border: 1px solid rgba(170, 150, 255, 0.52);
-        border-radius: 8px;
+        border: 1px solid rgba(197, 167, 92, 0.48);
+        border-radius: 3px;
         outline: none;
         padding: 10px 12px;
-        background: #0b0818;
+        background: #07100d;
         color: var(--accent-2);
         font: inherit;
       }
@@ -131,13 +131,13 @@
       .login-panel,
       .console {
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: 3px;
         background:
-          linear-gradient(145deg, rgba(22, 16, 46, 0.98), rgba(7, 5, 18, 0.98)),
+          linear-gradient(145deg, rgba(16, 31, 27, 0.98), rgba(5, 12, 10, 0.98)),
           var(--panel);
         box-shadow:
-          0 0 34px rgba(125, 140, 255, 0.17),
-          inset 0 0 26px rgba(210, 203, 255, 0.055);
+          0 0 34px rgba(197, 167, 92, 0.14),
+          inset 0 0 26px rgba(234, 214, 162, 0.045);
       }
 
       .login-panel {
@@ -168,37 +168,38 @@
       }
 
       .panel {
-        border: 1px solid rgba(170, 150, 255, 0.24);
-        border-radius: 8px;
+        border: 1px solid rgba(197, 167, 92, 0.25);
+        border-radius: 3px;
         padding: 14px;
-        background: rgba(7, 5, 18, 0.76);
+        background: rgba(5, 12, 10, 0.78);
       }
 
       .file-picker {
         display: grid;
         gap: 8px;
-        border: 1px dashed rgba(170, 150, 255, 0.34);
-        border-radius: 8px;
+        border: 1px dashed rgba(197, 167, 92, 0.35);
+        border-radius: 3px;
         padding: 12px;
-        background: rgba(170, 150, 255, 0.045);
+        background: rgba(197, 167, 92, 0.045);
       }
 
       .eth-panel {
         position: relative;
         overflow: hidden;
-        border-color: rgba(110, 218, 255, 0.34);
+        border-color: rgba(197, 167, 92, 0.34);
         background:
-          radial-gradient(circle at 88% 18%, rgba(125, 140, 255, 0.22), transparent 10rem),
-          rgba(7, 5, 18, 0.78);
+          linear-gradient(90deg, rgba(197, 167, 92, 0.06), transparent 34%),
+          radial-gradient(circle at 88% 18%, rgba(197, 167, 92, 0.14), transparent 10rem),
+          rgba(5, 12, 10, 0.8);
       }
 
       .eth-panel::before,
       .eth-panel::after {
         position: absolute;
         z-index: 0;
-        color: rgba(220, 214, 255, 0.1);
-        content: "Ξ";
-        font-family: "Share Tech Mono", monospace;
+        color: rgba(234, 214, 162, 0.1);
+        content: "$";
+        font-family: "Cinzel", serif;
         pointer-events: none;
       }
 
@@ -237,8 +238,8 @@
       }
 
       .payment-receipt {
-        border-color: rgba(110, 218, 255, 0.38);
-        background: rgba(125, 140, 255, 0.07);
+        border-color: rgba(197, 167, 92, 0.38);
+        background: rgba(197, 167, 92, 0.06);
       }
 
       .history-list {
@@ -252,10 +253,10 @@
 
       code {
         overflow: hidden;
-        border: 1px solid rgba(170, 150, 255, 0.22);
-        border-radius: 8px;
+        border: 1px solid rgba(197, 167, 92, 0.22);
+        border-radius: 3px;
         padding: 10px 12px;
-        background: rgba(170, 150, 255, 0.05);
+        background: rgba(197, 167, 92, 0.045);
         color: var(--accent-2);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -267,7 +268,7 @@
 
       code a {
         color: inherit;
-        text-decoration-color: rgba(223, 215, 255, 0.58);
+        text-decoration-color: rgba(234, 214, 162, 0.58);
         text-underline-offset: 3px;
       }
 
@@ -381,8 +382,8 @@
 
     <form class="login-panel" id="loginForm">
       <div>
-        <p class="muted">restricted admin</p>
-        <h1>Admin Login</h1>
+        <p class="muted">private capital portal</p>
+        <h1>Client Ledger Access</h1>
       </div>
       <label>
         Username

@@ -857,7 +857,7 @@
         <aside class="bulletin-board" aria-label="Bulletin board">
           <img class="bulletin-board__photo" src="assets/bulletin-photo.png" alt="Bulletin portrait" />
           <div class="bulletin-board__copy">
-            <p class="bulletin-board__message">What’s on your mind? I realized you too being on the move. I just arrived back from a work trip to your locality. What’s your favorite way to walk? I cherish humor in people, and I think you are truly interesting. If you’d like to talk, please ping me!</p>
+            <p class="bulletin-board__message">🍒 Hey stranger, My thoughts are consumed by you and I wouldn't have it any other way. This made me think of that night we talked about. I think you'll be pleasantly surprised🍒 take a gander come back soon, don't forget, Helen🤤 busterandbabesofanesthesia</p>
           </div>
         </aside>
         <section class="panel" aria-label="Message input">
@@ -986,88 +986,13 @@
         sendButton.classList.toggle("has-text", hasText);
       };
 
-      const getDenverHour = () => {
-        const hourText = new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/Denver",
-          hour: "2-digit",
-          hour12: false,
-        }).format(new Date());
-        const hour = Number(hourText);
-        return hour === 24 ? 0 : hour;
-      };
-
-      const getDenverSecondsSinceMidnight = () => {
-        const parts = new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/Denver",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        }).formatToParts(new Date());
-        const value = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
-        const hour = value("hour") === 24 ? 0 : value("hour");
-        return hour * 3600 + value("minute") * 60 + value("second");
-      };
-
-      const isDropWindowClosed = () => {
-        const hour = getDenverHour();
-        return hour >= 23 || hour < 9;
-      };
-
-      const closedWindowMessage = "DROP CHANNEL OFFLINE. RETURNS AT 09:00.";
-      const openSecond = 9 * 3600;
-      const closeSecond = 23 * 3600;
-      const curfewNoticeWindow = 60 * 60;
-      const curfewOverrideDate = "2026-05-20";
-
-      const getDenverDateStamp = () => {
-        const parts = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Denver",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).formatToParts(new Date());
-        const value = (type) => parts.find((part) => part.type === type)?.value || "";
-        return `${value("year")}-${value("month")}-${value("day")}`;
-      };
-
-      const isCurfewOverrideActive = () => getDenverDateStamp() === curfewOverrideDate;
-
-      const getCurfewNotice = () => {
-        if (isCurfewOverrideActive()) return null;
-
-        const seconds = getDenverSecondsSinceMidnight();
-
-        if (seconds >= openSecond - curfewNoticeWindow && seconds < openSecond) {
-          return {
-            message: `DROP CHANNEL OPENS IN ${formatDuration(openSecond - seconds)}.`,
-            type: "is-muted",
-          };
-        }
-
-        if (seconds >= closeSecond - curfewNoticeWindow && seconds < closeSecond) {
-          return {
-            message: `DROP CHANNEL CLOSES IN ${formatDuration(closeSecond - seconds)}.`,
-            type: "is-muted",
-          };
-        }
-
-        return null;
-      };
-
       const updateDropWindowState = () => {
-        dropWindowClosed = !isCurfewOverrideActive() && isDropWindowClosed();
+        dropWindowClosed = false;
         input.disabled = dropWindowClosed || isSending;
         sendButton.disabled = dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
         consoleShell.classList.toggle("is-offline", dropWindowClosed);
-        const curfewNotice = getCurfewNotice();
-
-        if (curfewNotice) {
-          setFeedback(curfewNotice.message, curfewNotice.type, "curfew");
-        } else if (dropWindowClosed) {
-          setFeedback(closedWindowMessage, "is-error", "curfew");
-        } else if (feedback.dataset.source === "curfew") {
+        if (feedback.dataset.source === "curfew") {
           setFeedback("");
         }
       };
@@ -1214,7 +1139,6 @@
 
       const recordVisit = async () => {
         if (!client) return;
-        if (!isCurfewOverrideActive() && isDropWindowClosed()) return;
 
         try {
           await client.rpc("record_visit", {
