@@ -259,6 +259,12 @@
         margin-top: 12px;
       }
 
+      .eth-rate-grid {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
       .status {
         min-height: 20px;
         color: var(--muted);
@@ -309,6 +315,10 @@
           <code id="ethWalletLabel">Wallet not connected</code>
           <code id="ethReceiverLabel">Set ETH receiving address</code>
           <code id="ethFullReceiverLabel">Receiver address pending</code>
+          <div class="eth-rate-grid" aria-label="Live ETH pricing">
+            <code id="ethPriceLabel">ETH/USD loading...</code>
+            <code id="ethEstimateLabel">Estimated USD $0.00</code>
+          </div>
           <label class="eth-amount">
             ETH amount to send
             <input id="ethAmountInput" type="number" inputmode="decimal" min="0.000001" step="0.000001" placeholder="0.01" />
@@ -357,6 +367,8 @@
       const ethWalletLabel = document.querySelector("#ethWalletLabel");
       const ethReceiverLabel = document.querySelector("#ethReceiverLabel");
       const ethFullReceiverLabel = document.querySelector("#ethFullReceiverLabel");
+      const ethPriceLabel = document.querySelector("#ethPriceLabel");
+      const ethEstimateLabel = document.querySelector("#ethEstimateLabel");
       const ethAmountInput = document.querySelector("#ethAmountInput");
       const connectWalletButton = document.querySelector("#connectWalletButton");
       const payEthButton = document.querySelector("#payEthButton");
@@ -373,7 +385,9 @@
       const submissionReceipt = "RECEIPT: MEDIA-SUBMISSION-RECEIVED";
       const submissionToken = "TOKEN-ACCESS-001";
       const ethReceivingAddress = "0x900090D49Ead23834A96b4907cf935AB0db5E6D3";
+      const ethPriceUrl = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd";
       let connectedEthAddress = "";
+      let ethUsdPrice = 0;
 
       const setStatus = (message, isError = false) => {
         status.textContent = message;
@@ -444,6 +458,23 @@
         return !!amount && Number.isFinite(Number(amount)) && Number(amount) > 0;
       };
 
+      const formatUsd = (value) =>
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 2,
+        }).format(value);
+
+      const updateEthEstimate = () => {
+        const amount = Number(getEthAmount());
+        if (!ethUsdPrice || !Number.isFinite(amount) || amount <= 0) {
+          ethEstimateLabel.textContent = "Estimated USD $0.00";
+          return;
+        }
+
+        ethEstimateLabel.textContent = `Estimated USD ${formatUsd(amount * ethUsdPrice)}`;
+      };
+
       const setEthState = () => {
         ethWalletLabel.textContent = connectedEthAddress
           ? `connected wallet ${formatEthAddress(connectedEthAddress)}`
@@ -454,7 +485,26 @@
         ethFullReceiverLabel.textContent = isConfiguredEthAddress()
           ? `ETH only ${ethReceivingAddress}`
           : "receiver address pending";
+        updateEthEstimate();
         payEthButton.disabled = !connectedEthAddress || !isConfiguredEthAddress() || !isValidEthAmount();
+      };
+
+      const loadEthPrice = async () => {
+        try {
+          const response = await fetch(ethPriceUrl, { cache: "no-store" });
+          if (!response.ok) throw new Error(`price request failed ${response.status}`);
+          const data = await response.json();
+          const price = Number(data?.ethereum?.usd);
+          if (!Number.isFinite(price) || price <= 0) throw new Error("invalid price response");
+
+          ethUsdPrice = price;
+          ethPriceLabel.textContent = `Live ETH/USD ${formatUsd(price)}`;
+          setEthState();
+        } catch (error) {
+          console.error("ETH price load failed:", error);
+          ethPriceLabel.textContent = "Live ETH/USD unavailable";
+          updateEthEstimate();
+        }
       };
 
       const hashCredentials = async (username, password) => {
@@ -560,6 +610,8 @@
       });
 
       setEthState();
+      loadEthPrice();
+      setInterval(loadEthPrice, 120000);
 
       if (sessionStorage.getItem(adminSessionKey) === "true") {
         unlockAdmin();
