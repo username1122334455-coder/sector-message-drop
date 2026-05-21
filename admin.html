@@ -12,16 +12,16 @@
     />
     <style>
       :root {
-        --bg: #09040c;
-        --panel: #1a0713;
-        --panel-2: #2a0e1c;
-        --line: rgba(255, 194, 91, 0.36);
-        --line-strong: rgba(255, 194, 91, 0.72);
-        --text: #fff2db;
-        --muted: #c9937a;
-        --accent: #ff8848;
-        --accent-2: #ffd66e;
-        --danger: #ff6379;
+        --bg: #060511;
+        --panel: #100b20;
+        --panel-2: #18112e;
+        --line: rgba(132, 112, 255, 0.38);
+        --line-strong: rgba(170, 150, 255, 0.78);
+        --text: #f3efff;
+        --muted: #a99fd3;
+        --accent: #7d8cff;
+        --accent-2: #dfd7ff;
+        --danger: #ffb86b;
         font-family: "Share Tech Mono", monospace;
       }
 
@@ -35,10 +35,12 @@
         padding: clamp(16px, 4vw, 38px);
         color: var(--text);
         background:
-          radial-gradient(circle at 50% 0%, rgba(255, 114, 54, 0.16), transparent 34rem),
-          radial-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+          radial-gradient(circle at 18% 12%, rgba(125, 140, 255, 0.18), transparent 18rem),
+          radial-gradient(circle at 82% 0%, rgba(71, 211, 255, 0.12), transparent 22rem),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          radial-gradient(rgba(220, 214, 255, 0.28) 1px, transparent 1px),
           var(--bg);
-        background-size: auto, 18px 18px, auto;
+        background-size: auto, auto, 42px 42px, 18px 18px, auto;
       }
 
       main,
@@ -78,9 +80,9 @@
         border: 1px solid var(--line-strong);
         border-radius: 8px;
         padding: 9px 14px;
-        background: linear-gradient(180deg, #ffe38c, #ff9550);
-        box-shadow: 0 7px 0 rgba(98, 36, 18, 0.78), 0 0 20px rgba(255, 116, 46, 0.18);
-        color: #1b0711;
+        background: linear-gradient(180deg, #f0ecff, #8d9aff);
+        box-shadow: 0 7px 0 rgba(38, 31, 94, 0.86), 0 0 22px rgba(125, 140, 255, 0.26);
+        color: #080617;
         cursor: pointer;
         font-size: 1rem;
         font-weight: 700;
@@ -96,11 +98,11 @@
       input {
         width: 100%;
         min-height: 46px;
-        border: 1px solid rgba(255, 138, 61, 0.58);
+        border: 1px solid rgba(170, 150, 255, 0.52);
         border-radius: 8px;
         outline: none;
         padding: 10px 12px;
-        background: #12070f;
+        background: #0b0818;
         color: var(--accent-2);
         font: inherit;
       }
@@ -131,11 +133,11 @@
         border: 1px solid var(--line);
         border-radius: 8px;
         background:
-          linear-gradient(145deg, rgba(42, 14, 28, 0.98), rgba(12, 4, 12, 0.98)),
+          linear-gradient(145deg, rgba(22, 16, 46, 0.98), rgba(7, 5, 18, 0.98)),
           var(--panel);
         box-shadow:
-          0 0 34px rgba(255, 116, 46, 0.16),
-          inset 0 0 26px rgba(255, 209, 102, 0.045);
+          0 0 34px rgba(125, 140, 255, 0.17),
+          inset 0 0 26px rgba(210, 203, 255, 0.055);
       }
 
       .login-panel {
@@ -153,8 +155,8 @@
 
       .hero {
         display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
+        align-items: center;
+        justify-content: flex-end;
         gap: 16px;
         margin-bottom: 18px;
       }
@@ -166,20 +168,55 @@
       }
 
       .panel {
-        border: 1px solid rgba(255, 194, 91, 0.22);
+        border: 1px solid rgba(170, 150, 255, 0.24);
         border-radius: 8px;
         padding: 14px;
-        background: rgba(10, 4, 10, 0.72);
+        background: rgba(7, 5, 18, 0.76);
       }
 
       .file-picker {
         display: grid;
         gap: 8px;
-        border: 1px dashed rgba(255, 194, 91, 0.32);
+        border: 1px dashed rgba(170, 150, 255, 0.34);
         border-radius: 8px;
-        margin-top: 12px;
         padding: 12px;
-        background: rgba(255, 138, 61, 0.035);
+        background: rgba(170, 150, 255, 0.045);
+      }
+
+      .eth-panel {
+        position: relative;
+        overflow: hidden;
+        border-color: rgba(110, 218, 255, 0.34);
+        background:
+          radial-gradient(circle at 88% 18%, rgba(125, 140, 255, 0.22), transparent 10rem),
+          rgba(7, 5, 18, 0.78);
+      }
+
+      .eth-panel::before,
+      .eth-panel::after {
+        position: absolute;
+        z-index: 0;
+        color: rgba(220, 214, 255, 0.1);
+        content: "Ξ";
+        font-family: "Share Tech Mono", monospace;
+        pointer-events: none;
+      }
+
+      .eth-panel::before {
+        top: 12px;
+        right: 18px;
+        font-size: 4.2rem;
+      }
+
+      .eth-panel::after {
+        right: 90px;
+        bottom: 8px;
+        font-size: 1.65rem;
+      }
+
+      .eth-panel > * {
+        position: relative;
+        z-index: 1;
       }
 
       .actions {
@@ -205,10 +242,10 @@
 
       code {
         overflow: hidden;
-        border: 1px solid rgba(255, 194, 91, 0.18);
+        border: 1px solid rgba(170, 150, 255, 0.22);
         border-radius: 8px;
         padding: 10px 12px;
-        background: rgba(255, 138, 61, 0.04);
+        background: rgba(170, 150, 255, 0.05);
         color: var(--accent-2);
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -240,16 +277,11 @@
   <body>
     <main class="admin-shell is-locked">
       <section class="hero" aria-label="Admin header">
-        <div>
-          <p class="muted">dropmmssgg.uk / restricted admin</p>
-          <h1>Admin Console</h1>
-        </div>
         <button id="logoutButton" type="button">Lock</button>
       </section>
 
       <section class="console" aria-label="Media admin console">
         <article class="panel">
-          <h2>Picture / Video Submission</h2>
           <label class="file-picker">
             Choose media file
             <input id="mediaFileInput" type="file" accept="image/*,video/*" />
@@ -267,15 +299,14 @@
           </div>
         </article>
 
-        <article class="panel">
-          <h2>ETHER Donation Box</h2>
-          <p class="muted">Connect a wallet to send an optional Ether donation.</p>
+        <article class="panel eth-panel">
+          <p class="muted">Connect a wallet to send payments.</p>
           <p class="warning">Ethereum based receiving address will only accept ETH. Other funds may be lost.</p>
           <code id="ethWalletLabel">Wallet not connected</code>
           <code id="ethReceiverLabel">Set ETH receiving address</code>
           <div class="actions">
             <button id="connectWalletButton" type="button">Connect Wallet</button>
-            <button id="payEthButton" type="button">Donate Ether</button>
+            <button id="payEthButton" type="button">Send ETH</button>
           </div>
         </article>
 
@@ -465,7 +496,7 @@
           method: "eth_sendTransaction",
           params: [transaction],
         });
-        setStatus("Ether donation submitted in wallet.");
+        setStatus("ETH payment submitted in wallet.");
       };
 
       const unlockAdmin = () => {
