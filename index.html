@@ -1086,7 +1086,7 @@
         const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
         if (resetSeconds > 0) {
-          return `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${formatDuration(resetSeconds)}.`;
+          return `DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ${formatDuration(resetSeconds)}.`;
         }
 
         return "";
@@ -1359,7 +1359,7 @@
 
           if (!data?.ok) {
             const resetText = data?.reset_seconds ? formatDuration(data.reset_seconds) : "later";
-            setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ${resetText}.`, "is-error");
+            setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ${resetText}.`, "is-error");
             return;
           }
 
@@ -1384,7 +1384,7 @@
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
               setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
             } else {
-              setFeedback("MSG sent - two messages per hour");
+              setFeedback("MSG sent - two entries per hour");
             }
           } else {
             setFeedback("MSG sent");

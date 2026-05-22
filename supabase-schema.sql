@@ -195,7 +195,7 @@ begin
   if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit or v_global_count >= v_global_limit then
     return jsonb_build_object(
       'ok', false,
-      'message', 'DEVICE/IP WINDOW CLOSED. 2 MESSAGES PER HOUR. RESETS IN ' || floor(v_reset_seconds / 60) || 'M ' || mod(v_reset_seconds, 60) || 'S.',
+      'message', 'DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ' || floor(v_reset_seconds / 60) || 'M ' || mod(v_reset_seconds, 60) || 'S.',
       'device_remaining', 0,
       'reset_seconds', v_reset_seconds
     );
@@ -576,5 +576,243 @@ grant execute on function public.record_eth_payment_receipt(text, text, text, nu
 grant execute on function public.record_eth_payment_receipt(text, text, text, numeric, numeric, numeric, numeric, numeric, text, boolean, timestamptz) to authenticated;
 grant execute on function public.get_eth_payment_records(text) to anon;
 grant execute on function public.get_eth_payment_records(text) to authenticated;
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.reward_codes (
+  id bigserial primary key,
+  user_number text not null unique,
+  code_salt text not null,
+  code_hash text not null,
+  backup_code_salt text,
+  backup_code_hash text,
+  redeemed_at timestamptz,
+  redeemed_with text,
+  redeemed_client_hash text,
+  redeemed_ip_hash text,
+  redemption_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint reward_codes_redeemed_with_check check (
+    redeemed_with is null or redeemed_with in ('primary', 'backup')
+  )
+);
+
+create table if not exists public.reward_redemption_attempts (
+  id bigserial primary key,
+  user_number text,
+  client_hash text,
+  ip_hash text,
+  ok boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists reward_redemption_attempts_client_created_at_idx
+  on public.reward_redemption_attempts (client_hash, created_at desc);
+
+create index if not exists reward_redemption_attempts_ip_created_at_idx
+  on public.reward_redemption_attempts (ip_hash, created_at desc);
+
+alter table public.reward_codes enable row level security;
+alter table public.reward_redemption_attempts enable row level security;
+
+revoke all on public.reward_codes from anon, authenticated;
+revoke all on public.reward_redemption_attempts from anon, authenticated;
+
+drop function if exists public.reward_code_hash(text, text, text);
+drop function if exists public.upsert_reward_code(text, text, text, boolean);
+drop function if exists public.verify_reward_code(text, text, uuid);
+
+create or replace function public.reward_code_hash(
+  p_user_number text,
+  p_code text,
+  p_salt text
+)
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select encode(
+    digest(trim(p_salt) || ':' || trim(p_user_number) || ':' || trim(p_code), 'sha256'),
+    'hex'
+  );
+$$;
+
+create or replace function public.upsert_reward_code(
+  p_user_number text,
+  p_reward_code text,
+  p_backup_code text default null,
+  p_reset_redemption boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code_salt text := encode(gen_random_bytes(16), 'hex');
+  v_backup_salt text := case
+    when nullif(trim(coalesce(p_backup_code, '')), '') is null then null
+    else encode(gen_random_bytes(16), 'hex')
+  end;
+begin
+  if trim(p_user_number) !~ '^\d{1,10}$' then
+    raise exception 'Invalid user number.';
+  end if;
+
+  if trim(p_reward_code) !~ '^\d{8,16}$' then
+    raise exception 'Invalid primary reward code.';
+  end if;
+
+  if nullif(trim(coalesce(p_backup_code, '')), '') is not null
+    and trim(p_backup_code) !~ '^\d{8,16}$'
+  then
+    raise exception 'Invalid backup reward code.';
+  end if;
+
+  insert into public.reward_codes (
+    user_number,
+    code_salt,
+    code_hash,
+    backup_code_salt,
+    backup_code_hash
+  )
+  values (
+    trim(p_user_number),
+    v_code_salt,
+    public.reward_code_hash(p_user_number, p_reward_code, v_code_salt),
+    v_backup_salt,
+    case
+      when v_backup_salt is null then null
+      else public.reward_code_hash(p_user_number, p_backup_code, v_backup_salt)
+    end
+  )
+  on conflict (user_number) do update
+  set
+    code_salt = excluded.code_salt,
+    code_hash = excluded.code_hash,
+    backup_code_salt = excluded.backup_code_salt,
+    backup_code_hash = excluded.backup_code_hash,
+    redeemed_at = case when p_reset_redemption then null else public.reward_codes.redeemed_at end,
+    redeemed_with = case when p_reset_redemption then null else public.reward_codes.redeemed_with end,
+    redeemed_client_hash = case when p_reset_redemption then null else public.reward_codes.redeemed_client_hash end,
+    redeemed_ip_hash = case when p_reset_redemption then null else public.reward_codes.redeemed_ip_hash end,
+    redemption_id = case when p_reset_redemption then null else public.reward_codes.redemption_id end,
+    updated_at = now();
+
+  return jsonb_build_object('ok', true, 'user_number', trim(p_user_number));
+end;
+$$;
+
+create or replace function public.verify_reward_code(
+  p_user_number text,
+  p_reward_code text,
+  p_client_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_headers jsonb;
+  v_ip text;
+  v_ip_hash text;
+  v_client_hash text;
+  v_failed_attempts int;
+  v_code public.reward_codes%rowtype;
+  v_used text;
+  v_redemption_id uuid := gen_random_uuid();
+begin
+  if trim(p_user_number) !~ '^\d{1,10}$' or trim(p_reward_code) !~ '^\d{8,16}$' then
+    return jsonb_build_object('ok', false, 'message', 'Invalid reward credentials.');
+  end if;
+
+  v_headers := coalesce(nullif(current_setting('request.headers', true), '')::jsonb, '{}'::jsonb);
+  v_ip := coalesce(
+    v_headers ->> 'cf-connecting-ip',
+    split_part(v_headers ->> 'x-forwarded-for', ',', 1),
+    v_headers ->> 'x-real-ip',
+    'unknown'
+  );
+  v_ip_hash := md5(trim(v_ip));
+  v_client_hash := md5(p_client_id::text);
+
+  select count(*)
+    into v_failed_attempts
+    from public.reward_redemption_attempts
+   where ok = false
+     and created_at >= now() - interval '15 minutes'
+     and (client_hash = v_client_hash or ip_hash = v_ip_hash);
+
+  if v_failed_attempts >= 8 then
+    return jsonb_build_object(
+      'ok', false,
+      'message', 'Reward verification paused. Try again later.'
+    );
+  end if;
+
+  select *
+    into v_code
+    from public.reward_codes
+   where user_number = trim(p_user_number)
+   for update;
+
+  if not found then
+    insert into public.reward_redemption_attempts (user_number, client_hash, ip_hash, ok)
+    values (trim(p_user_number), v_client_hash, v_ip_hash, false);
+
+    return jsonb_build_object('ok', false, 'message', 'Invalid reward credentials.');
+  end if;
+
+  if v_code.redeemed_at is not null then
+    insert into public.reward_redemption_attempts (user_number, client_hash, ip_hash, ok)
+    values (trim(p_user_number), v_client_hash, v_ip_hash, false);
+
+    return jsonb_build_object('ok', false, 'message', 'Reward token already redeemed.');
+  end if;
+
+  if public.reward_code_hash(p_user_number, p_reward_code, v_code.code_salt) = v_code.code_hash then
+    v_used := 'primary';
+  elsif v_code.backup_code_salt is not null
+    and public.reward_code_hash(p_user_number, p_reward_code, v_code.backup_code_salt) = v_code.backup_code_hash
+  then
+    v_used := 'backup';
+  else
+    insert into public.reward_redemption_attempts (user_number, client_hash, ip_hash, ok)
+    values (trim(p_user_number), v_client_hash, v_ip_hash, false);
+
+    return jsonb_build_object('ok', false, 'message', 'Invalid reward credentials.');
+  end if;
+
+  update public.reward_codes
+     set redeemed_at = now(),
+         redeemed_with = v_used,
+         redeemed_client_hash = v_client_hash,
+         redeemed_ip_hash = v_ip_hash,
+         redemption_id = v_redemption_id,
+         updated_at = now()
+   where id = v_code.id;
+
+  insert into public.reward_redemption_attempts (user_number, client_hash, ip_hash, ok)
+  values (trim(p_user_number), v_client_hash, v_ip_hash, true);
+
+  return jsonb_build_object(
+    'ok', true,
+    'message', 'Reward code verified.',
+    'user_number', trim(p_user_number),
+    'redemption_id', v_redemption_id,
+    'verified_with', v_used,
+    'verified_at', now()
+  );
+end;
+$$;
+
+revoke all on function public.reward_code_hash(text, text, text) from public, anon, authenticated;
+revoke all on function public.upsert_reward_code(text, text, text, boolean) from public, anon, authenticated;
+revoke all on function public.verify_reward_code(text, text, uuid) from public;
+grant execute on function public.verify_reward_code(text, text, uuid) to anon;
+grant execute on function public.verify_reward_code(text, text, uuid) to authenticated;
 
 notify pgrst, 'reload schema';
