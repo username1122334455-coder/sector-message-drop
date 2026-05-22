@@ -1,6 +1,6 @@
 # Sector Message Drop
 
-Supabase-backed message drop website with a separate reward-code admin page.
+Supabase-backed message drop website.
 
 ## Message Drop
 
