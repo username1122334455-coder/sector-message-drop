@@ -1,6 +1,14 @@
 drop function if exists public.record_eth_payment_receipt(text, text, text, numeric, numeric, numeric, numeric, numeric, text, boolean, timestamptz);
 drop function if exists public.get_eth_payment_records(text);
 drop table if exists public.eth_payment_receipts;
+drop function if exists public.record_admin_media_submission(text);
+drop function if exists public.get_admin_media_submission_count();
+drop table if exists public.admin_media_submissions;
+drop policy if exists "Admin files can be uploaded" on storage.objects;
+drop policy if exists "Admin files can be listed" on storage.objects;
+drop policy if exists "Admin files can be read" on storage.objects;
+delete from storage.objects where bucket_id = 'drop-admin-files';
+delete from storage.buckets where id = 'drop-admin-files';
 
 create table if not exists public.drops (
   id bigint generated always as identity primary key,
@@ -337,96 +345,6 @@ $$;
 
 grant execute on function public.get_drop_stats() to anon;
 grant execute on function public.get_drop_stats() to authenticated;
-
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'drop-admin-files',
-  'drop-admin-files',
-  false,
-  52428800,
-  null
-)
-on conflict (id) do update
-set
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
-drop policy if exists "Admin files can be uploaded" on storage.objects;
-drop policy if exists "Admin files can be listed" on storage.objects;
-drop policy if exists "Admin files can be read" on storage.objects;
-
-create policy "Admin files can be uploaded"
-on storage.objects
-for insert
-to anon, authenticated
-with check (bucket_id = 'drop-admin-files');
-
-create table if not exists public.admin_media_submissions (
-  id bigserial primary key,
-  token text not null,
-  file_path text not null,
-  created_at timestamptz not null default now()
-);
-
-alter table public.admin_media_submissions enable row level security;
-
-drop function if exists public.record_admin_media_submission(text);
-drop function if exists public.get_admin_media_submission_count();
-
-create or replace function public.record_admin_media_submission(
-  p_file_path text
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_id bigint;
-  v_token text;
-  v_receipt text;
-begin
-  if p_file_path is null or length(trim(p_file_path)) = 0 then
-    return jsonb_build_object('ok', false, 'message', 'Missing file path.');
-  end if;
-
-  insert into public.admin_media_submissions (token, file_path)
-  values ('TOKEN-PENDING', trim(p_file_path))
-  returning id into v_id;
-
-  v_token := 'TOKEN-ACCESS-' || lpad(v_id::text, 6, '0');
-  v_receipt := 'RECEIPT: MEDIA-SUBMISSION-' || lpad(v_id::text, 6, '0');
-
-  update public.admin_media_submissions
-     set token = v_token
-   where id = v_id;
-
-  return jsonb_build_object(
-    'ok', true,
-    'count', v_id,
-    'token', v_token,
-    'receipt', v_receipt
-  );
-end;
-$$;
-
-create or replace function public.get_admin_media_submission_count()
-returns jsonb
-language sql
-security definer
-set search_path = public
-as $$
-  select jsonb_build_object(
-    'ok', true,
-    'count', count(*)
-  )
-  from public.admin_media_submissions;
-$$;
-
-grant execute on function public.record_admin_media_submission(text) to anon;
-grant execute on function public.record_admin_media_submission(text) to authenticated;
-grant execute on function public.get_admin_media_submission_count() to anon;
-grant execute on function public.get_admin_media_submission_count() to authenticated;
 
 create extension if not exists pgcrypto;
 
