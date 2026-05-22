@@ -88,17 +88,7 @@ as $$
 declare
   v_headers jsonb;
   v_ip text;
-  v_denver_hour int;
-  v_denver_date date;
-  v_curfew_override_date date := date '2026-05-20';
 begin
-  v_denver_date := timezone('America/Denver', now())::date;
-  v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
-
-  if v_denver_date <> v_curfew_override_date and (v_denver_hour >= 23 or v_denver_hour < 9) then
-    return jsonb_build_object('ok', false, 'message', 'Visit ignored during curfew.');
-  end if;
-
   v_headers := coalesce(nullif(current_setting('request.headers', true), '')::jsonb, '{}'::jsonb);
   v_ip := coalesce(
     v_headers ->> 'cf-connecting-ip',
@@ -144,9 +134,6 @@ declare
   v_global_limit int := 20;
   v_window interval := interval '1 hour';
   v_reset_at timestamptz;
-  v_denver_hour int;
-  v_denver_date date;
-  v_curfew_override_date date := date '2026-05-20';
 begin
   p_message := trim(p_message);
 
@@ -157,18 +144,6 @@ begin
     return jsonb_build_object(
       'ok', false,
       'message', 'Message must be 1-500 characters.',
-      'device_remaining', 0,
-      'reset_seconds', 0
-    );
-  end if;
-
-  v_denver_date := timezone('America/Denver', now())::date;
-  v_denver_hour := extract(hour from timezone('America/Denver', now()))::int;
-
-  if v_denver_date <> v_curfew_override_date and (v_denver_hour >= 23 or v_denver_hour < 9) then
-    return jsonb_build_object(
-      'ok', false,
-      'message', 'DROP CHANNEL OFFLINE. RETURNS AT 09:00.',
       'device_remaining', 0,
       'reset_seconds', 0
     );
@@ -240,73 +215,6 @@ grant execute on function public.submit_drop(text, uuid) to anon;
 grant execute on function public.submit_drop(text, uuid) to authenticated;
 
 drop function if exists public.get_admin_stats();
-
-create or replace function public.get_admin_stats()
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_denver_now timestamp;
-  v_today_start_local timestamp;
-  v_today_end_local timestamp;
-  v_today_start timestamptz;
-  v_today_end timestamptz;
-  v_visits_today int;
-  v_total_visits int;
-  v_unique_devices_today int;
-  v_unique_ips_today int;
-  v_drops_today int;
-  v_total_drops int;
-begin
-  v_denver_now := timezone('America/Denver', now());
-  v_today_start_local := date_trunc('day', v_denver_now);
-  v_today_end_local := v_today_start_local + interval '1 day';
-  v_today_start := v_today_start_local at time zone 'America/Denver';
-  v_today_end := v_today_end_local at time zone 'America/Denver';
-
-  select count(*) into v_visits_today
-    from public.visits
-   where created_at >= v_today_start
-     and created_at < v_today_end;
-
-  select count(*) into v_total_visits
-    from public.visits;
-
-  select count(distinct client_hash) into v_unique_devices_today
-    from public.visits
-   where created_at >= v_today_start
-     and created_at < v_today_end;
-
-  select count(distinct ip_hash) into v_unique_ips_today
-    from public.visits
-   where created_at >= v_today_start
-     and created_at < v_today_end;
-
-  select count(*) into v_drops_today
-    from public.drops
-   where created_at >= v_today_start
-     and created_at < v_today_end;
-
-  select count(*) into v_total_drops
-    from public.drops;
-
-  return jsonb_build_object(
-    'visits_today', v_visits_today,
-    'total_visits', v_total_visits,
-    'unique_devices_today', v_unique_devices_today,
-    'unique_ips_today', v_unique_ips_today,
-    'drops_today', v_drops_today,
-    'total_drops', v_total_drops,
-    'window_start', v_today_start,
-    'window_end', v_today_end
-  );
-end;
-$$;
-
-grant execute on function public.get_admin_stats() to anon;
-grant execute on function public.get_admin_stats() to authenticated;
 
 create or replace function public.get_drop_stats()
 returns jsonb
