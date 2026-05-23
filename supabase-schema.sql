@@ -7,8 +7,6 @@ drop table if exists public.admin_media_submissions;
 drop policy if exists "Admin files can be uploaded" on storage.objects;
 drop policy if exists "Admin files can be listed" on storage.objects;
 drop policy if exists "Admin files can be read" on storage.objects;
-delete from storage.objects where bucket_id = 'drop-admin-files';
-delete from storage.buckets where id = 'drop-admin-files';
 drop function if exists public.reward_code_hash(text, text, text);
 drop function if exists public.upsert_reward_code(text, text, text, boolean);
 drop function if exists public.verify_reward_code(text, text, uuid);
