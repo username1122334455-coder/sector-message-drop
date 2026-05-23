@@ -849,6 +849,278 @@
           width: 100%;
         }
       }
+
+      /* 2005-2015 style refresh: flatter, quieter, no neon glow. */
+      :root {
+        --bg: #d9e1ea;
+        --panel: #ffffff;
+        --panel-2: #f4f6f9;
+        --text: #1f2937;
+        --muted: #687385;
+        --accent: #2f5e8f;
+        --accent-2: #7a4f1d;
+        --danger: #a33b32;
+        --ink: #202020;
+        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+      }
+
+      body {
+        display: block;
+        min-height: 100vh;
+        padding: clamp(12px, 4vw, 34px);
+        color: var(--text);
+        background:
+          linear-gradient(#eef3f8, #c8d5e2 46%, #b9c7d6),
+          var(--bg);
+      }
+
+      body::before,
+      body::after,
+      .console::before,
+      .console::after {
+        display: none;
+        animation: none;
+      }
+
+      .console {
+        width: min(100%, 820px);
+        margin: clamp(16px, 5vh, 42px) auto;
+        padding: 14px;
+        border: 1px solid #8fa0b2;
+        border-radius: 4px;
+        overflow: visible;
+        background: #f8fafc;
+        box-shadow: 0 2px 8px rgba(31, 41, 55, 0.22);
+        transform: none;
+        transition: none;
+      }
+
+      .console.is-offline {
+        filter: grayscale(0.25);
+      }
+
+      .mission-grid {
+        gap: 14px;
+      }
+
+      .bulletin-board,
+      .panel {
+        border: 1px solid #aeb9c6;
+        border-radius: 3px;
+        background: #ffffff;
+        box-shadow: none;
+      }
+
+      .bulletin-board {
+        grid-template-columns: minmax(96px, 0.25fr) minmax(0, 1fr);
+        padding: 12px;
+      }
+
+      .bulletin-board__photo {
+        min-height: 132px;
+        max-height: 186px;
+        border: 1px solid #b7c0ca;
+        border-radius: 2px;
+        box-shadow: none;
+      }
+
+      .bulletin-board__copy {
+        padding: 8px 10px;
+        border: 1px solid #d9dee5;
+        border-radius: 2px;
+        background: linear-gradient(#fffefb, #f4efe3);
+      }
+
+      .bulletin-board__message {
+        color: #543c24;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(0.96rem, 2.2vw, 1.14rem);
+        line-height: 1.38;
+      }
+
+      .panel {
+        gap: 12px;
+        padding: clamp(14px, 4vw, 22px);
+        background:
+          linear-gradient(#ffffff, #f2f5f8),
+          var(--panel);
+      }
+
+      .panel.is-active,
+      .panel.is-sending {
+        box-shadow: none;
+        animation: none;
+      }
+
+      .terminal-head {
+        justify-items: start;
+      }
+
+      .clock-chip {
+        justify-self: start;
+        border: 1px solid #9aa8b7;
+        border-radius: 2px;
+        background: #e8eef5;
+        color: #30465d;
+        box-shadow: none;
+        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+      }
+
+      form {
+        gap: 8px;
+      }
+
+      textarea,
+      button {
+        border-radius: 3px;
+        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        text-transform: none;
+      }
+
+      textarea {
+        min-height: 54px;
+        border: 1px solid #8f9bab;
+        background: #ffffff;
+        color: #1f2937;
+        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.22);
+      }
+
+      textarea::placeholder {
+        color: #6f7b88;
+      }
+
+      textarea:focus,
+      .panel.is-active textarea {
+        border-color: #2f5e8f;
+        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.18), 0 0 0 2px rgba(47, 94, 143, 0.16);
+      }
+
+      .typing-caret {
+        background: #2f5e8f;
+        box-shadow: none;
+      }
+
+      button {
+        flex-basis: 112px;
+        height: 54px;
+        border: 1px solid #6d7d8e;
+        background: linear-gradient(#fdfdfd, #d7dee8);
+        color: #1f2937;
+        box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(31, 41, 55, 0.28);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      button::after {
+        display: none;
+      }
+
+      button:hover:not(:disabled),
+      button.has-text {
+        filter: none;
+        transform: none;
+        box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(31, 41, 55, 0.28);
+        text-shadow: none;
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(1px);
+        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.28);
+      }
+
+      button.is-burst {
+        animation: none;
+      }
+
+      .feedback,
+      .terminal-log,
+      .stats-row {
+        color: #526170;
+        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        letter-spacing: 0;
+      }
+
+      .feedback {
+        min-height: 22px;
+        padding: 6px 8px;
+        border: 1px solid #d8dee7;
+        background: #f8fafc;
+        font-size: 0.86rem;
+        text-transform: none;
+      }
+
+      .feedback:not(:empty)::before {
+        content: "";
+      }
+
+      .feedback.is-error {
+        color: var(--danger);
+      }
+
+      .terminal-log {
+        text-transform: none;
+      }
+
+      .terminal-log::before {
+        content: "";
+      }
+
+      .stats-row {
+        grid-template-columns: minmax(0, 1fr) minmax(150px, auto);
+        padding: 8px;
+        border: 1px solid #d8dee7;
+        background: #eef3f8;
+        font-size: 0.78rem;
+        text-transform: none;
+      }
+
+      .stats-row .timer {
+        color: #30465d;
+        animation: none;
+      }
+
+      .mission-alert {
+        width: calc(100% - 120px);
+        border: 1px solid #9aa8b7;
+        border-radius: 3px;
+        background: #fffef6;
+        box-shadow: 0 2px 5px rgba(31, 41, 55, 0.2);
+      }
+
+      .mission-alert__label,
+      .mission-alert__text {
+        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        text-transform: none;
+      }
+
+      .mission-alert__label {
+        color: #687385;
+      }
+
+      .mission-alert__text {
+        color: #7a4f1d;
+        text-shadow: none;
+      }
+
+      @media (max-width: 520px) {
+        .console {
+          margin: 0 auto;
+          padding: 10px;
+        }
+
+        .bulletin-board {
+          grid-template-columns: 86px minmax(0, 1fr);
+        }
+
+        .bulletin-board__message {
+          font-size: 0.9rem;
+          line-height: 1.28;
+        }
+
+        .stats-row {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
