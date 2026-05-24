@@ -582,13 +582,6 @@
         overflow-wrap: anywhere;
       }
 
-      .stats-row .timer {
-        grid-column: 2;
-        text-align: center;
-        color: var(--accent-2);
-        animation: timerFlicker 2.4s steps(2) infinite;
-      }
-
       .mission-alert {
         width: calc(100% - 130px);
         max-width: none;
@@ -729,17 +722,6 @@
         }
       }
 
-      @keyframes timerFlicker {
-        0%,
-        100% {
-          opacity: 0.78;
-        }
-        50% {
-          opacity: 1;
-          text-shadow: 0 0 10px rgba(255, 209, 102, 0.38);
-        }
-      }
-
       @keyframes transmitPulse {
         0%,
         100% {
@@ -825,11 +807,6 @@
         .bulletin-board__message {
           font-size: 1rem;
           line-height: 1.08;
-        }
-
-        .stats-row .timer {
-          grid-column: auto;
-          text-align: left;
         }
 
         form {
@@ -1102,15 +1079,6 @@
         text-transform: uppercase;
       }
 
-      .stats-row .timer {
-        color: #7f2f25;
-        animation: none;
-      }
-
-      .stats-row .timer.is-hidden {
-        display: none;
-      }
-
       .mission-alert {
         width: calc(100% - 120px);
         border: 3px solid #171911;
@@ -1192,7 +1160,6 @@
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="stats-row" aria-label="Terminal activity stats">
             <span id="usersOnline">0 USERS ONLINE</span>
-            <span class="timer is-hidden" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
         </section>
       </section>
@@ -1213,7 +1180,6 @@
       const consoleShell = document.querySelector(".console");
       const terminalLog = document.querySelector("#terminalLog");
       const usersOnline = document.querySelector("#usersOnline");
-      const resetTimer = document.querySelector("#resetTimer");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
       const privateMessageLink = document.querySelector("#privateMessageLink");
@@ -1227,7 +1193,6 @@
         "interface ready...",
         "key loaded...",
         "awaiting drop...",
-        "local timer active...",
       ];
       const placeholders = [
         "DROP MSG",
@@ -1388,35 +1353,10 @@
         const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
 
         if (resetSeconds > 0) {
-          return `DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ${formatDuration(resetSeconds)}.`;
+          return "DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR.";
         }
 
         return "";
-      };
-
-      const getResetSeconds = () => {
-        const sentAtList = getDeviceDropTimes();
-
-        if (sentAtList.length < deviceLimitPerHour) return 0;
-
-        return Math.max(Math.ceil((sentAtList[0] + rollingLimitMs - Date.now()) / 1000), 0);
-      };
-
-      const formatCountdown = (seconds) => {
-        const safeSeconds = Math.max(Number(seconds) || 0, 0);
-        const hours = Math.floor(safeSeconds / 3600);
-        const minutes = Math.floor((safeSeconds % 3600) / 60);
-        const remainder = safeSeconds % 60;
-        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
-      };
-
-      const updateResetTimer = () => {
-        const resetSeconds = getResetSeconds();
-        const isLimitClosed = resetSeconds > 0 && getDeviceDropTimes().length >= deviceLimitPerHour;
-        resetTimer.classList.toggle("is-hidden", !isLimitClosed);
-        resetTimer.textContent = isLimitClosed
-          ? `MESSAGE COUNTER RESETS IN ${formatCountdown(resetSeconds)}`
-          : "";
       };
 
       const getDisplayedOnlineCount = (count = 0) => {
@@ -1633,8 +1573,6 @@
       setInterval(updatePlaceholder, 3200);
       updateActivityState();
       autoExpandInput();
-      updateResetTimer();
-      setInterval(updateResetTimer, 1000);
       updateDropWindowState();
       setInterval(updateDropWindowState, 30000);
       updateOnlineUsers(0);
@@ -1692,8 +1630,7 @@
           }
 
           if (!data?.ok) {
-            const resetText = data?.reset_seconds ? formatDuration(data.reset_seconds) : "later";
-            setFeedback(data?.message || `DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ${resetText}.`, "is-error");
+            setFeedback("DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR.", "is-error");
             return;
           }
 
@@ -1702,7 +1639,6 @@
           updateCaret();
           updateActivityState();
           markDeviceLimitUsed();
-          updateResetTimer();
           runSendBurst();
           if (passwordPromptMode && missionReply) {
             showMissionAlert(missionReply);
@@ -1716,7 +1652,7 @@
           if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
             if (data.device_remaining > 0) {
               const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
-              setFeedback(`MSG sent - ${remainingText} remaining for ${formatDuration(data.reset_seconds)}`);
+              setFeedback(`MSG sent - ${remainingText} remaining`);
             } else {
               setFeedback("MSG sent - two entries per hour");
             }
