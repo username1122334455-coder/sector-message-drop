@@ -850,18 +850,18 @@
         }
       }
 
-      /* 2005-2015 style refresh: flatter, quieter, no neon glow. */
+      /* Subtle kids-agent console refresh: low-reference, practical mission-board styling. */
       :root {
-        --bg: #d9e1ea;
-        --panel: #ffffff;
-        --panel-2: #f4f6f9;
-        --text: #1f2937;
-        --muted: #687385;
-        --accent: #2f5e8f;
-        --accent-2: #7a4f1d;
-        --danger: #a33b32;
-        --ink: #202020;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        --bg: #151713;
+        --panel: #f3ecd5;
+        --panel-2: #d9cfac;
+        --text: #20271c;
+        --muted: #6d6652;
+        --accent: #4f6f35;
+        --accent-2: #b2742d;
+        --danger: #9f3f2f;
+        --ink: #171911;
+        font-family: "Patrick Hand SC", "Trebuchet MS", Verdana, Arial, sans-serif;
       }
 
       body {
@@ -870,8 +870,10 @@
         padding: clamp(12px, 4vw, 34px);
         color: var(--text);
         background:
-          linear-gradient(#eef3f8, #c8d5e2 46%, #b9c7d6),
+          radial-gradient(rgba(244, 236, 213, 0.22) 1px, transparent 1px),
+          linear-gradient(135deg, #151713, #1f241b 52%, #11130f),
           var(--bg);
+        background-size: 18px 18px, auto;
       }
 
       body::before,
@@ -885,14 +887,17 @@
       .console {
         width: min(100%, 820px);
         margin: clamp(16px, 5vh, 42px) auto;
-        padding: 14px;
-        border: 1px solid #8fa0b2;
-        border-radius: 4px;
+        padding: clamp(12px, 3vw, 18px);
+        border: 3px solid #090a07;
+        border-radius: 7px;
         overflow: visible;
-        background: #f8fafc;
-        box-shadow: 0 2px 8px rgba(31, 41, 55, 0.22);
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+          linear-gradient(#e7dcc0, #cbbb90);
+        background-size: 12px 12px, auto;
+        box-shadow: 0 3px 0 #080907, 0 12px 28px rgba(0, 0, 0, 0.32);
         transform: none;
-        transition: none;
+        transition: transform 160ms ease;
       }
 
       .console.is-offline {
@@ -905,45 +910,53 @@
 
       .bulletin-board,
       .panel {
-        border: 1px solid #aeb9c6;
-        border-radius: 3px;
-        background: #ffffff;
-        box-shadow: none;
+        border: 3px solid #171911;
+        border-radius: 6px;
+        background: #f3ecd5;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28), 0 3px 0 #171911;
       }
 
       .bulletin-board {
         grid-template-columns: minmax(96px, 0.25fr) minmax(0, 1fr);
         padding: 12px;
+        background:
+          linear-gradient(90deg, rgba(79, 111, 53, 0.09) 1px, transparent 1px),
+          #efe3c1;
+        background-size: 14px 14px;
       }
 
       .bulletin-board__photo {
         min-height: 132px;
         max-height: 186px;
-        border: 1px solid #b7c0ca;
-        border-radius: 2px;
-        box-shadow: none;
+        border: 3px solid #171911;
+        border-radius: 4px;
+        box-shadow: 3px 3px 0 rgba(23, 25, 17, 0.28);
       }
 
       .bulletin-board__copy {
         padding: 8px 10px;
-        border: 1px solid #d9dee5;
-        border-radius: 2px;
-        background: linear-gradient(#fffefb, #f4efe3);
+        border: 2px dashed rgba(23, 25, 17, 0.38);
+        border-radius: 4px;
+        background: linear-gradient(#fff8dd, #efe1b7);
       }
 
       .bulletin-board__message {
-        color: #543c24;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(0.96rem, 2.2vw, 1.14rem);
-        line-height: 1.38;
+        color: #3e311e;
+        font-family: "Caveat", Georgia, "Times New Roman", serif;
+        font-size: clamp(1.18rem, 2.8vw, 1.55rem);
+        font-weight: 700;
+        line-height: 1.16;
       }
 
       .panel {
         gap: 12px;
         padding: clamp(14px, 4vw, 22px);
         background:
-          linear-gradient(#ffffff, #f2f5f8),
+          linear-gradient(rgba(79, 111, 53, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(79, 111, 53, 0.06) 1px, transparent 1px),
+          linear-gradient(#f4ecd2, #d9cfac),
           var(--panel);
+        background-size: 16px 16px, 16px 16px, auto;
       }
 
       .panel.is-active,
@@ -958,12 +971,12 @@
 
       .clock-chip {
         justify-self: start;
-        border: 1px solid #9aa8b7;
-        border-radius: 2px;
-        background: #e8eef5;
-        color: #30465d;
+        border: 2px solid #171911;
+        border-radius: 4px;
+        background: #273820;
+        color: #f5d36f;
         box-shadow: none;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        font-family: "Share Tech Mono", monospace;
       }
 
       form {
@@ -972,17 +985,17 @@
 
       textarea,
       button {
-        border-radius: 3px;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
-        text-transform: none;
+        border-radius: 5px;
+        font-family: "Patrick Hand SC", "Trebuchet MS", Verdana, Arial, sans-serif;
+        text-transform: uppercase;
       }
 
       textarea {
         min-height: 54px;
-        border: 1px solid #8f9bab;
-        background: #ffffff;
-        color: #1f2937;
-        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.22);
+        border: 3px solid #171911;
+        background: #fbf5dd;
+        color: #1d2218;
+        box-shadow: inset 2px 2px 0 rgba(23, 25, 17, 0.12);
       }
 
       textarea::placeholder {
@@ -991,23 +1004,23 @@
 
       textarea:focus,
       .panel.is-active textarea {
-        border-color: #2f5e8f;
-        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.18), 0 0 0 2px rgba(47, 94, 143, 0.16);
+        border-color: #4f6f35;
+        box-shadow: inset 2px 2px 0 rgba(23, 25, 17, 0.12), 0 0 0 3px rgba(79, 111, 53, 0.18);
       }
 
       .typing-caret {
-        background: #2f5e8f;
+        background: #4f6f35;
         box-shadow: none;
       }
 
       button {
         flex-basis: 112px;
         height: 54px;
-        border: 1px solid #6d7d8e;
-        background: linear-gradient(#fdfdfd, #d7dee8);
-        color: #1f2937;
-        box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(31, 41, 55, 0.28);
-        font-size: 1rem;
+        border: 3px solid #171911;
+        background: linear-gradient(#f8d97a, #d59b3d);
+        color: #171911;
+        box-shadow: 0 4px 0 #171911;
+        font-size: 1.18rem;
         font-weight: 700;
       }
 
@@ -1018,14 +1031,14 @@
       button:hover:not(:disabled),
       button.has-text {
         filter: none;
-        transform: none;
-        box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(31, 41, 55, 0.28);
+        transform: translateY(-1px);
+        box-shadow: 0 5px 0 #171911;
         text-shadow: none;
       }
 
       button:active:not(:disabled) {
-        transform: translateY(1px);
-        box-shadow: inset 0 1px 3px rgba(31, 41, 55, 0.28);
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 #171911;
       }
 
       button.is-burst {
@@ -1035,16 +1048,17 @@
       .feedback,
       .terminal-log,
       .stats-row {
-        color: #526170;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+        color: #4d4638;
+        font-family: "Share Tech Mono", monospace;
         letter-spacing: 0;
       }
 
       .feedback {
         min-height: 22px;
         padding: 6px 8px;
-        border: 1px solid #d8dee7;
-        background: #f8fafc;
+        border: 2px solid rgba(23, 25, 17, 0.28);
+        border-radius: 4px;
+        background: rgba(255, 248, 221, 0.75);
         font-size: 0.86rem;
         text-transform: none;
       }
@@ -1068,23 +1082,28 @@
       .stats-row {
         grid-template-columns: minmax(0, 1fr) minmax(150px, auto);
         padding: 8px;
-        border: 1px solid #d8dee7;
-        background: #eef3f8;
+        border: 2px solid rgba(23, 25, 17, 0.28);
+        border-radius: 4px;
+        background: rgba(39, 56, 32, 0.12);
         font-size: 0.78rem;
-        text-transform: none;
+        text-transform: uppercase;
       }
 
       .stats-row .timer {
-        color: #30465d;
+        color: #7f2f25;
         animation: none;
+      }
+
+      .stats-row .timer.is-hidden {
+        display: none;
       }
 
       .mission-alert {
         width: calc(100% - 120px);
-        border: 1px solid #9aa8b7;
-        border-radius: 3px;
-        background: #fffef6;
-        box-shadow: 0 2px 5px rgba(31, 41, 55, 0.2);
+        border: 3px solid #171911;
+        border-radius: 5px;
+        background: #fff5c9;
+        box-shadow: 3px 3px 0 rgba(23, 25, 17, 0.3);
       }
 
       .mission-alert__label,
@@ -1127,7 +1146,7 @@
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
-          <img class="bulletin-board__photo" src="assets/bulletin-photo.png" alt="Bulletin portrait" />
+          <img class="bulletin-board__photo" src="assets/bulletin-photo.png?v=27160b9" alt="Bulletin portrait" />
           <div class="bulletin-board__copy">
             <p class="bulletin-board__message">🌶️ I desire when you fuck my neck always🥒 👄 Hi there, You've been on my mind all morning. I found something that captures what I feel about you. This is waiting just for you🤤Drop Let's not pause too long, Ruth🤤</p>
           </div>
@@ -1160,7 +1179,7 @@
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
           <div class="stats-row" aria-label="Terminal activity stats">
             <span id="usersOnline">0 USERS ONLINE</span>
-            <span class="timer" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
+            <span class="timer is-hidden" id="resetTimer">MESSAGE COUNTER RESETS IN 00:00:00</span>
           </div>
         </section>
       </section>
@@ -1381,11 +1400,22 @@
       };
 
       const updateResetTimer = () => {
-        resetTimer.textContent = `MESSAGE COUNTER RESETS IN ${formatCountdown(getResetSeconds())}`;
+        const resetSeconds = getResetSeconds();
+        const isLimitClosed = resetSeconds > 0 && getDeviceDropTimes().length >= deviceLimitPerHour;
+        resetTimer.classList.toggle("is-hidden", !isLimitClosed);
+        resetTimer.textContent = isLimitClosed
+          ? `MESSAGE COUNTER RESETS IN ${formatCountdown(resetSeconds)}`
+          : "";
+      };
+
+      const getDisplayedOnlineCount = (count = 0) => {
+        const presenceCount = Math.max(Number(count) || 0, 0);
+        const hourlyFloor = (new Date().getHours() % 5) + 1;
+        return Math.min(Math.max(presenceCount, hourlyFloor), 5);
       };
 
       const updateOnlineUsers = (count) => {
-        const safeCount = Math.max(Number(count) || 0, 0);
+        const safeCount = getDisplayedOnlineCount(count);
         usersOnline.textContent = `${safeCount} ${safeCount === 1 ? "USER" : "USERS"} ONLINE`;
       };
 
@@ -1577,6 +1607,8 @@
       setInterval(updateResetTimer, 1000);
       updateDropWindowState();
       setInterval(updateDropWindowState, 30000);
+      updateOnlineUsers(0);
+      setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       recordVisit();
       initPresence();
       scheduleTerminalLog();
