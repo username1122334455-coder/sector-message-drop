@@ -1571,12 +1571,12 @@
 
           if (error) {
             console.error("Supabase drop failed:", error);
-            setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : error.message || "Drop failed. Try again.", "is-error");
+            setFeedback(passwordPromptMode ? passwordPromptMessage : error.message || "Drop failed. Try again.", "is-error");
             return;
           }
 
           if (!data?.ok) {
-            setFeedback("CAPTURE FAILED. TRY AGAIN.", "is-error");
+            setFeedback(passwordPromptMode ? passwordPromptMessage : "Drop failed. Try again.", "is-error");
             return;
           }
 
@@ -1597,7 +1597,7 @@
           setFeedback("MSG sent");
         } catch (error) {
           console.error("Supabase drop failed:", error);
-          setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
+          setFeedback(passwordPromptMode ? passwordPromptMessage : "Drop failed. Try again.", "is-error");
         } finally {
           isSending = false;
           panel.classList.remove("is-sending");
