@@ -1153,7 +1153,7 @@
         </aside>
         <section class="panel" aria-label="Message input">
           <div class="terminal-head">
-            <time class="clock-chip" id="militaryClock" aria-label="Current 24-hour time">00:00:00</time>
+            <time class="clock-chip" id="militaryClock" aria-label="Current local time">00:00:00:00 AM</time>
           </div>
           <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
             <p class="mission-alert__label">secure reply</p>
@@ -1263,12 +1263,13 @@
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
-        militaryClock.textContent = new Intl.DateTimeFormat(undefined, {
+        const standardTime = new Intl.DateTimeFormat(undefined, {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-          hour12: false,
+          hour12: true,
         }).format(now);
+        militaryClock.textContent = standardTime.replace(/\s/, ":00 ");
       };
 
       const updateActivityState = () => {
