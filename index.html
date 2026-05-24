@@ -1263,13 +1263,14 @@
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
+        const watchTicks = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0");
         const standardTime = new Intl.DateTimeFormat(undefined, {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: true,
         }).format(now);
-        militaryClock.textContent = standardTime.replace(/\s/, ":00 ");
+        militaryClock.textContent = standardTime.replace(/\s/, `:${watchTicks} `);
       };
 
       const updateActivityState = () => {
@@ -1596,7 +1597,7 @@
 
       window.addEventListener("resize", updateCaret);
       updateMilitaryClock();
-      setInterval(updateMilitaryClock, 1000);
+      setInterval(updateMilitaryClock, 40);
       if (passwordPromptMode) {
         input.removeAttribute("maxlength");
       }
