@@ -1166,7 +1166,7 @@
         </aside>
         <section class="panel" aria-label="Message input">
           <div class="terminal-head">
-            <time class="clock-chip" id="militaryClock" aria-label="Current local time">00:00:00:00</time>
+            <time class="clock-chip" id="militaryClock" aria-label="Current local time">3:59</time>
           </div>
           <aside class="mission-alert" id="missionAlert" aria-live="polite" aria-hidden="true">
             <p class="mission-alert__label">secure reply</p>
@@ -1277,11 +1277,9 @@
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
-        const hour = String((now.getHours() % 12) || 12).padStart(2, "0");
+        const hour = String((now.getHours() % 12) || 12);
         const minute = String(now.getMinutes()).padStart(2, "0");
-        const second = String(now.getSeconds()).padStart(2, "0");
-        const watchTicks = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0");
-        militaryClock.textContent = `${hour}:${minute}:${second}:${watchTicks}`;
+        militaryClock.textContent = `${hour}:${minute}`;
       };
 
       const updateActivityState = () => {
@@ -1627,7 +1625,7 @@
 
       window.addEventListener("resize", updateCaret);
       updateMilitaryClock();
-      setInterval(updateMilitaryClock, 40);
+      setInterval(updateMilitaryClock, 1000);
       if (passwordPromptMode) {
         input.removeAttribute("maxlength");
       }
