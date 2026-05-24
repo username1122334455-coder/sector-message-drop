@@ -122,16 +122,6 @@ declare
   v_client_hash text;
   v_ip text;
   v_ip_hash text;
-  v_device_count int;
-  v_ip_count int;
-  v_global_count int;
-  v_device_remaining int;
-  v_reset_seconds int;
-  v_device_limit int := 2;
-  v_ip_limit int := 2;
-  v_global_limit int := 20;
-  v_window interval := interval '1 hour';
-  v_reset_at timestamptz;
 begin
   p_message := trim(p_message);
 
@@ -141,9 +131,7 @@ begin
   then
     return jsonb_build_object(
       'ok', false,
-      'message', 'Message must be 1-500 characters.',
-      'device_remaining', 0,
-      'reset_seconds', 0
+      'message', 'Message must be 1-500 characters.'
     );
   end if;
 
@@ -157,50 +145,12 @@ begin
   );
   v_ip_hash := md5(trim(v_ip));
 
-  select count(*)
-    into v_device_count
-    from public.drops
-   where client_hash = v_client_hash
-     and created_at >= now() - v_window;
-
-  select count(*)
-    into v_ip_count
-    from public.drops
-   where ip_hash = v_ip_hash
-     and created_at >= now() - v_window;
-
-  select count(*)
-    into v_global_count
-    from public.drops
-   where created_at >= now() - v_window;
-
-  select min(created_at + v_window)
-    into v_reset_at
-    from public.drops
-   where (client_hash = v_client_hash or ip_hash = v_ip_hash or v_global_count >= v_global_limit)
-     and created_at >= now() - v_window;
-
-  v_reset_seconds := greatest(ceil(extract(epoch from (coalesce(v_reset_at, now() + v_window) - now())))::int, 0);
-
-  if v_device_count >= v_device_limit or v_ip_count >= v_ip_limit or v_global_count >= v_global_limit then
-    return jsonb_build_object(
-      'ok', false,
-      'message', 'DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR. RESETS IN ' || floor(v_reset_seconds / 60) || 'M ' || mod(v_reset_seconds, 60) || 'S.',
-      'device_remaining', 0,
-      'reset_seconds', v_reset_seconds
-    );
-  end if;
-
   insert into public.drops (message, client_hash, ip_hash)
   values (p_message, v_client_hash, v_ip_hash);
 
-  v_device_remaining := greatest(v_device_limit - v_device_count - 1, 0);
-
   return jsonb_build_object(
     'ok', true,
-    'message', 'Drop received.',
-    'device_remaining', v_device_remaining,
-    'reset_seconds', v_reset_seconds
+    'message', 'Drop received.'
   );
 end;
 $$;

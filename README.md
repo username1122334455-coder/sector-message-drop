@@ -5,8 +5,8 @@ Supabase-backed message drop website.
 ## Message Drop
 
 - Stores submitted entries in Supabase.
-- Uses an anonymous browser/device token plus request IP hash for rate limiting.
-- Limits each recognizable device/IP window to 2 entries per hour.
+- Uses an anonymous browser/device token plus request IP hash for storage metadata.
+- Does not limit message attempts.
 - Captures submitted text, then shows the password-required prompt on the page.
 - Stored entries must be 1-500 characters.
 - Browser websites cannot read a real device MAC address.

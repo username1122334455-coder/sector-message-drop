@@ -1188,7 +1188,6 @@
       const missionAlertText = document.querySelector("#missionAlertText");
       const privateMessageLink = document.querySelector("#privateMessageLink");
       const clientIdKey = "sector-message-drop-client-id";
-      const deviceLimitKey = "sector-message-drop-device-window";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1309,57 +1308,6 @@
         if (passwordPromptMode) return "";
         if (value.length > 26) return "Message max is 26 characters.";
         if (/\s/.test(value)) return "No spaces.";
-        return "";
-      };
-
-      const formatDuration = (seconds) => {
-        const safeSeconds = Math.max(Number(seconds) || 0, 0);
-        const minutes = Math.floor(safeSeconds / 60);
-        const remainder = safeSeconds % 60;
-
-        if (minutes && remainder) return `${minutes}m ${remainder}s`;
-        if (minutes) return `${minutes}m`;
-        return `${remainder}s`;
-      };
-
-      const rollingLimitMs = 60 * 60 * 1000;
-      const deviceLimitPerHour = 2;
-
-      const getDeviceLimit = () => {
-        try {
-          return JSON.parse(localStorage.getItem(deviceLimitKey) || "{}");
-        } catch {
-          return {};
-        }
-      };
-
-      const getDeviceDropTimes = () => {
-        const savedLimit = getDeviceLimit();
-        const rawTimes = Array.isArray(savedLimit.sentAtList) ? savedLimit.sentAtList : [savedLimit.sentAt];
-        const cutoff = Date.now() - rollingLimitMs;
-        return rawTimes
-          .map((sentAt) => Number(sentAt) || 0)
-          .filter((sentAt) => sentAt > cutoff)
-          .sort((a, b) => a - b);
-      };
-
-      const markDeviceLimitUsed = () => {
-        const sentAtList = [...getDeviceDropTimes(), Date.now()].slice(-deviceLimitPerHour);
-        localStorage.setItem(deviceLimitKey, JSON.stringify({ sentAtList }));
-      };
-
-      const getDeviceLimitIssue = () => {
-        const sentAtList = getDeviceDropTimes();
-
-        if (sentAtList.length < deviceLimitPerHour) return "";
-
-        const resetAt = sentAtList[0] + rollingLimitMs;
-        const resetSeconds = Math.max(Math.ceil((resetAt - Date.now()) / 1000), 0);
-
-        if (resetSeconds > 0) {
-          return "DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR.";
-        }
-
         return "";
       };
 
@@ -1600,12 +1548,6 @@
           return;
         }
 
-        const deviceLimitIssue = getDeviceLimitIssue();
-        if (deviceLimitIssue) {
-          setFeedback(deviceLimitIssue, "is-error");
-          return;
-        }
-
         const missionReply = getMissionReply(value);
 
         if (!client) {
@@ -1634,7 +1576,7 @@
           }
 
           if (!data?.ok) {
-            setFeedback("DEVICE/IP WINDOW CLOSED. 2 ENTRIES PER HOUR.", "is-error");
+            setFeedback(data?.message || "CAPTURE FAILED. TRY AGAIN.", "is-error");
             return;
           }
 
@@ -1642,7 +1584,6 @@
           autoExpandInput();
           updateCaret();
           updateActivityState();
-          markDeviceLimitUsed();
           runSendBurst();
           if (passwordPromptMode && missionReply) {
             showMissionAlert(missionReply);
@@ -1653,16 +1594,7 @@
             setFeedback(passwordPromptMessage);
             return;
           }
-          if (Number.isInteger(data.device_remaining) && Number.isInteger(data.reset_seconds)) {
-            if (data.device_remaining > 0) {
-              const remainingText = data.device_remaining === 1 ? "one" : String(data.device_remaining);
-              setFeedback(`MSG sent - ${remainingText} remaining`);
-            } else {
-              setFeedback("MSG sent - two entries per hour");
-            }
-          } else {
-            setFeedback("MSG sent");
-          }
+          setFeedback("MSG sent");
         } catch (error) {
           console.error("Supabase drop failed:", error);
           setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
