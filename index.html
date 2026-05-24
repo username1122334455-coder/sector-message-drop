@@ -1277,14 +1277,12 @@
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
+        const period = now.getHours() >= 12 ? "PM" : "AM";
+        const hour = String((now.getHours() % 12) || 12).padStart(2, "0");
+        const minute = String(now.getMinutes()).padStart(2, "0");
+        const second = String(now.getSeconds()).padStart(2, "0");
         const watchTicks = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0");
-        const standardTime = new Intl.DateTimeFormat(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        }).format(now);
-        militaryClock.textContent = standardTime.replace(/\s/, `:${watchTicks} `);
+        militaryClock.textContent = `${hour}:${minute}:${second}:${watchTicks} ${period}`;
       };
 
       const updateActivityState = () => {
