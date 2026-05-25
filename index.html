@@ -1306,15 +1306,15 @@
       <div class="upload-portal__panel" role="dialog" aria-modal="true">
         <div class="upload-portal__head">
           <div>
-            <h2 id="uploadPortalTitle">Picture Drop</h2>
-            <p>Choose one picture to submit.</p>
+            <h2 id="uploadPortalTitle">File Drop</h2>
+            <p>Choose one picture or PDF to submit.</p>
           </div>
           <button class="upload-portal__close" id="uploadPortalClose" type="button" aria-label="Close upload portal">×</button>
         </div>
         <form id="uploadForm" novalidate>
           <div class="upload-portal__drop">
-            <label for="privatePhotoInput">Picture file</label>
-            <input id="privatePhotoInput" name="privatePhoto" type="file" accept="image/*" />
+            <label for="privatePhotoInput">Picture or PDF file</label>
+            <input id="privatePhotoInput" name="privatePhoto" type="file" accept="image/*,.pdf,application/pdf" />
           </div>
           <div class="upload-portal__actions">
             <button class="upload-portal__submit" id="uploadSubmit" type="submit">UPLOAD</button>
@@ -1724,13 +1724,17 @@
           return;
         }
 
-        if (!file.type.startsWith("image/")) {
-          setUploadStatus("Only picture files are accepted.", "is-error");
+        const isAcceptedFile = file.type.startsWith("image/") ||
+          file.type === "application/pdf" ||
+          file.name.toLowerCase().endsWith(".pdf");
+
+        if (!isAcceptedFile) {
+          setUploadStatus("Only picture or PDF files are accepted.", "is-error");
           return;
         }
 
         if (file.size > 10 * 1024 * 1024) {
-          setUploadStatus("Picture must be under 10 MB.", "is-error");
+          setUploadStatus("File must be under 10 MB.", "is-error");
           return;
         }
 

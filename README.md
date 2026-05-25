@@ -23,6 +23,6 @@ Messages are available in Supabase Table Editor > `drops`.
 Private message link clicks are tracked in Supabase Table Editor > `visits`
 with `path` set to `click:private-msg`.
 
-`CLICK HERE` opens a private picture upload portal. Uploaded pictures go to
-Supabase Storage > `private-message-uploads`; the site does not list uploaded
+`CLICK HERE` opens a file upload portal for pictures or PDFs. Uploaded files go
+to Supabase Storage > `private-message-uploads`; the site does not list uploaded
 files publicly.
