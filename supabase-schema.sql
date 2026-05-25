@@ -7,11 +7,33 @@ drop table if exists public.admin_media_submissions;
 drop policy if exists "Admin files can be uploaded" on storage.objects;
 drop policy if exists "Admin files can be listed" on storage.objects;
 drop policy if exists "Admin files can be read" on storage.objects;
+drop policy if exists "Private message pictures can be uploaded" on storage.objects;
+drop policy if exists "Private message pictures are owner visible" on storage.objects;
 drop function if exists public.reward_code_hash(text, text, text);
 drop function if exists public.upsert_reward_code(text, text, text, boolean);
 drop function if exists public.verify_reward_code(text, text, uuid);
 drop table if exists public.reward_redemption_attempts;
 drop table if exists public.reward_codes;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'private-message-uploads',
+  'private-message-uploads',
+  false,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "Private message pictures can be uploaded"
+on storage.objects
+for insert
+to anon, authenticated
+with check (bucket_id = 'private-message-uploads');
 
 create table if not exists public.drops (
   id bigint generated always as identity primary key,
