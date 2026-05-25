@@ -1743,7 +1743,10 @@
           uploadForm.reset();
         } catch (error) {
           console.error("Private upload failed:", error);
-          setUploadStatus("Upload failed. Check Supabase Storage.", "is-error");
+          const uploadMessage = error?.message
+            ? `Upload failed: ${error.message}`
+            : "Upload failed. Check Supabase Storage.";
+          setUploadStatus(uploadMessage, "is-error");
         } finally {
           uploadSubmit.disabled = false;
         }

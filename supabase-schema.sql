@@ -21,7 +21,7 @@ values (
   'private-message-uploads',
   false,
   10485760,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+  null
 )
 on conflict (id) do update
 set
