@@ -26,3 +26,6 @@ with `path` set to `click:private-msg`.
 `CLICK HERE` opens a file upload portal for pictures or PDFs. Uploaded files go
 to Supabase Storage > `private-message-uploads`; the site does not list uploaded
 files publicly.
+
+If PDF upload returns `MIME type application/pdf is not supported`, run
+`supabase-storage-upload-fix.sql` in the Supabase SQL Editor.

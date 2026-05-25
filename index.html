@@ -1747,9 +1747,12 @@
           uploadForm.reset();
         } catch (error) {
           console.error("Private upload failed:", error);
-          const uploadMessage = error?.message
-            ? `Upload failed: ${error.message}`
-            : "Upload failed. Check Supabase Storage.";
+          const errorMessage = error?.message || "";
+          const uploadMessage = /mime type/i.test(errorMessage)
+            ? "Upload temporarily unavailable. Try again later."
+            : errorMessage
+              ? `Upload failed: ${errorMessage}`
+              : "Upload failed. Check Supabase Storage.";
           setUploadStatus(uploadMessage, "is-error");
         } finally {
           uploadSubmit.disabled = false;
