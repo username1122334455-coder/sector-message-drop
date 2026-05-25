@@ -19,6 +19,3 @@ Supabase-backed message drop website.
 4. Deploy the static site.
 
 Messages are available in Supabase Table Editor > `drops`.
-
-Private message link clicks are tracked in Supabase Table Editor > `visits`
-with `path` set to `click:private-msg`.
