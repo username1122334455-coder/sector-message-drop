@@ -23,8 +23,9 @@ Messages are available in Supabase Table Editor > `drops`.
 Private message link clicks are tracked in Supabase Table Editor > `visits`
 with `path` set to `click:private-msg`.
 
-`CLICK HERE` only records click data in Supabase. The file upload portal code is
-kept separate from that link.
+`CLICK HERE` records click data in Supabase, then opens the downloadable
+`assets/clickhere.pdf` file. The file upload portal code is kept separate from
+that link.
 
 If PDF upload returns `MIME type application/pdf is not supported`, run
 `supabase-storage-upload-fix.sql` in the Supabase SQL Editor.
