@@ -28,3 +28,6 @@ kept separate from that link.
 
 If PDF upload returns `MIME type application/pdf is not supported`, run
 `supabase-storage-upload-fix.sql` in the Supabase SQL Editor.
+
+If message submissions return `DROP CHANNEL OFFLINE`, run
+`supabase-submit-drop-fix.sql` in the Supabase SQL Editor.
