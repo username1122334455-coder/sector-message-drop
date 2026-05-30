@@ -21,5 +21,40 @@
   </head>
   <body>
     <h1>Not Found</h1>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
+      const CLIENT_ID_KEY = "sector-message-drop-client-id";
+
+      const getClientId = () => {
+        let clientId = localStorage.getItem(CLIENT_ID_KEY);
+
+        if (!clientId) {
+          clientId = crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          localStorage.setItem(CLIENT_ID_KEY, clientId);
+        }
+
+        return clientId;
+      };
+
+      const recordVisit = async () => {
+        if (!window.supabase) return;
+
+        try {
+          const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+          await client.rpc("record_visit", {
+            p_client_id: getClientId(),
+            p_path: window.location.pathname || "/",
+          });
+        } catch {
+          // Keep the Not Found page unchanged if analytics is unavailable.
+        }
+      };
+
+      recordVisit();
+    </script>
   </body>
 </html>
