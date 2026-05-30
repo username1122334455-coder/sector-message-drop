@@ -41,6 +41,77 @@
         background-size: 18px 18px;
       }
 
+      body.site-unavailable {
+        display: block;
+        padding: 0;
+        overflow: auto;
+        color: #111827;
+        background: #ffffff;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body.site-unavailable::before,
+      body.site-unavailable::after,
+      body.site-unavailable .console,
+      body.site-unavailable .upload-portal {
+        display: none;
+      }
+
+      .not-found-page {
+        display: none;
+      }
+
+      body.site-unavailable .not-found-page {
+        display: block;
+        min-height: 100vh;
+        padding: 28px 24px;
+        background: #ffffff;
+      }
+
+      .not-found-card {
+        width: min(540px, 100%);
+        margin: 0;
+        padding: 24px 26px;
+        border: 1px solid #dddfe5;
+        border-radius: 4px;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+      }
+
+      .not-found-card p {
+        margin: 0 0 22px;
+        font-size: 18px;
+        line-height: 1.35;
+      }
+
+      .not-found-card p:last-child {
+        margin-bottom: 0;
+      }
+
+      .not-found-card strong {
+        font-weight: 700;
+      }
+
+      .not-found-card code {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 0.96em;
+      }
+
+      .not-found-docs {
+        display: block;
+        width: min(540px, 100%);
+        margin-top: 18px;
+        padding: 18px 20px;
+        border: 1px solid #2684ff;
+        border-radius: 4px;
+        color: #2684ff;
+        background: #ffffff;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+      }
+
       body::before,
       body::after {
         display: none;
@@ -1260,7 +1331,17 @@
       }
     </style>
   </head>
-  <body>
+  <body class="site-unavailable">
+    <section class="not-found-page" aria-label="Page not found">
+      <div class="not-found-card">
+        <p><strong>404:</strong> NOT_FOUND</p>
+        <p>Code: <code>`NOT_FOUND`</code></p>
+        <p>ID: <code>`cle1::xr7f4-1776791062233-3c2764d72339`</code></p>
+      </div>
+      <a class="not-found-docs" href="#" aria-label="Read documentation">
+        Read our documentation to learn more about this error.
+      </a>
+    </section>
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
