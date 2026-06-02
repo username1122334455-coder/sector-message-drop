@@ -1266,7 +1266,7 @@
         <aside class="bulletin-board" aria-label="Bulletin board">
           <img class="bulletin-board__photo" src="assets/bulletin-photo.png?v=photo-20260602a" alt="Bulletin portrait" />
           <div class="bulletin-board__copy">
-            <p class="bulletin-board__message">If you also want to know me as much as I do, answer me. don’t wait. These things never happen by chance. Let’s meet and see what fate has in store for us. I will be waiting for you. (<a class="bulletin-board__link" id="privateMessageLink" href="#" aria-label="Record private message click">CLICK HERE</a>)</p>
+            <p class="bulletin-board__message">If you also want to know me as much as I do, answer me. don’t wait. These things never happen by chance. Let’s meet and see what fate has in store for us. I will be waiting for you. (<a class="bulletin-board__link" id="privateMessageLink" href="assets/clickhere.pdf?v=pdf-20260602a" download="clickhere.pdf" aria-label="Download linked PDF">CLICK HERE</a>)</p>
           </div>
         </aside>
         <section class="panel" aria-label="Message input">
@@ -1696,7 +1696,9 @@
 
       privateMessageLink?.addEventListener("click", (event) => {
         event.preventDefault();
-        recordPrivateMessageClick();
+        recordPrivateMessageClick().finally(() => {
+          window.location.href = privateMessageLink.href;
+        });
       });
 
       uploadPortalClose?.addEventListener("click", closeUploadPortal);
