@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@500;700&family=Patrick+Hand+SC&family=Share+Tech+Mono&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bangers&amp;family=Caveat:wght@500;700&amp;family=Patrick+Hand+SC&amp;family=Share+Tech+Mono&amp;display=swap"
       rel="stylesheet"
     />
     <style>
@@ -1514,10 +1514,11 @@ Peggy (<a class="bulletin-board__link" id="privateMessageLink" href="assets/clic
         if (!client) return;
 
         try {
-          await client.rpc("record_visit", {
+          const { error } = await client.rpc("record_visit", {
             p_client_id: getClientId(),
             p_path: window.location.pathname || "/",
           });
+          if (error) throw error;
         } catch {
           // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
         }
@@ -1527,10 +1528,11 @@ Peggy (<a class="bulletin-board__link" id="privateMessageLink" href="assets/clic
         if (!client) return;
 
         try {
-          await client.rpc("record_visit", {
+          const { error } = await client.rpc("record_visit", {
             p_client_id: getClientId(),
             p_path: "click:private-msg",
           });
+          if (error) throw error;
         } catch {
           // Click tracking should never block the visible page.
         }
