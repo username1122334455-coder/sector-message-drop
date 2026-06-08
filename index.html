@@ -786,7 +786,7 @@
 
       @media (max-width: 520px) {
         .clock-chip {
-          justify-self: start;
+          justify-self: end;
         }
 
         .stats-row {
@@ -1075,11 +1075,11 @@
       }
 
       .terminal-head {
-        justify-items: start;
+        justify-items: end;
       }
 
       .clock-chip {
-        justify-self: start;
+        justify-self: end;
         border: 2px solid #171911;
         border-radius: 4px;
         background: #273820;
@@ -1290,7 +1290,7 @@
               required
             ></textarea>
             <span class="typing-caret" id="typingCaret" aria-hidden="true"></span>
-            <button id="sendButton" type="submit">ENTER</button>
+            <button id="sendButton" type="submit">SEND</button>
           </form>
 
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
@@ -1360,7 +1360,7 @@
         "awaiting drop...",
       ];
       const placeholders = [
-        "USERNAME",
+        "ENTER YOUR REPLY HERE",
       ];
       const transmitSteps = [
         "checking window...",
