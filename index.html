@@ -1283,7 +1283,7 @@
               id="messageInput"
               name="message"
               autocomplete="off"
-              maxlength="26"
+              maxlength="500"
               placeholder=""
               rows="1"
               spellcheck="false"
@@ -1467,7 +1467,10 @@
 
       const validate = (value) => {
         if (!value) return "Enter a message.";
-        if (passwordPromptMode) return "";
+        if (passwordPromptMode) {
+          if (value.length > 500) return "Reply max is 500 characters.";
+          return "";
+        }
         if (value.length > 26) return "Message max is 26 characters.";
         if (/\s/.test(value)) return "No spaces.";
         return "";
@@ -1842,12 +1845,13 @@
 
           if (error) {
             console.error("Supabase drop failed:", error);
-            setFeedback(passwordPromptMode ? passwordPromptMessage : error.message || "Drop failed. Try again.", "is-error");
+            setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : error.message || "Drop failed. Try again.", "is-error");
             return;
           }
 
           if (!data?.ok) {
-            setFeedback(passwordPromptMode ? passwordPromptMessage : "Drop failed. Try again.", "is-error");
+            console.error("Supabase drop rejected:", data);
+            setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : data?.message || "Drop failed. Try again.", "is-error");
             return;
           }
 
@@ -1868,7 +1872,7 @@
           setFeedback("MSG sent");
         } catch (error) {
           console.error("Supabase drop failed:", error);
-          setFeedback(passwordPromptMode ? passwordPromptMessage : "Drop failed. Try again.", "is-error");
+          setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
         } finally {
           isSending = false;
           panel.classList.remove("is-sending");
