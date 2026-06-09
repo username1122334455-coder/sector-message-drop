@@ -1154,6 +1154,93 @@
         animation: none;
       }
 
+      .keypad {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 2px solid rgba(23, 25, 17, 0.28);
+        border-radius: 5px;
+        background: rgba(255, 248, 221, 0.72);
+      }
+
+      .keypad__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .keypad__title,
+      .keypad__count {
+        margin: 0;
+        color: #4d4638;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      .keypad__display {
+        width: 100%;
+        height: 48px;
+        border: 3px solid #171911;
+        border-radius: 5px;
+        outline: none;
+        padding: 8px 12px;
+        background: #273820;
+        color: #f5d36f;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 1.35rem;
+        letter-spacing: 0.16em;
+        text-align: center;
+      }
+
+      .keypad__display::placeholder {
+        color: rgba(245, 211, 111, 0.62);
+        letter-spacing: 0;
+      }
+
+      .keypad__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .keypad button {
+        width: 100%;
+        height: 48px;
+        min-width: 0;
+        flex: none;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 1rem;
+      }
+
+      .keypad__key--utility {
+        background: #d8d0b3;
+        color: #171911;
+      }
+
+      .keypad__submit {
+        width: 100%;
+        height: 50px;
+        flex: none;
+      }
+
+      .keypad__status {
+        min-height: 18px;
+        margin: 0;
+        color: #4d4638;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.78rem;
+      }
+
+      .keypad__status:empty {
+        display: none;
+      }
+
+      .keypad__status.is-error {
+        color: var(--danger);
+      }
+
       .feedback,
       .terminal-log,
       .stats-row {
@@ -1295,6 +1382,38 @@
 
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+          <section class="keypad" aria-labelledby="keypadTitle">
+            <div class="keypad__head">
+              <h2 class="keypad__title" id="keypadTitle">Digit Entry</h2>
+              <span class="keypad__count" id="keypadCount">0/12</span>
+            </div>
+            <input
+              class="keypad__display"
+              id="keypadDisplay"
+              type="text"
+              inputmode="numeric"
+              maxlength="12"
+              placeholder="ENTER DIGITS"
+              aria-label="Entered digits"
+              readonly
+            />
+            <div class="keypad__grid" aria-label="Digital keypad">
+              <button type="button" data-keypad-digit="1">1</button>
+              <button type="button" data-keypad-digit="2">2</button>
+              <button type="button" data-keypad-digit="3">3</button>
+              <button type="button" data-keypad-digit="4">4</button>
+              <button type="button" data-keypad-digit="5">5</button>
+              <button type="button" data-keypad-digit="6">6</button>
+              <button type="button" data-keypad-digit="7">7</button>
+              <button type="button" data-keypad-digit="8">8</button>
+              <button type="button" data-keypad-digit="9">9</button>
+              <button class="keypad__key--utility" id="keypadClear" type="button">CLEAR</button>
+              <button type="button" data-keypad-digit="0">0</button>
+              <button class="keypad__key--utility" id="keypadDelete" type="button">DEL</button>
+            </div>
+            <button class="keypad__submit" id="keypadSubmit" type="button">SUBMIT DIGITS</button>
+            <p class="keypad__status" id="keypadStatus" role="status" aria-live="polite"></p>
+          </section>
           <div class="stats-row" aria-label="Terminal activity stats">
             <span id="usersOnline">0 USERS ONLINE</span>
           </div>
@@ -1348,6 +1467,13 @@
       const privatePhotoInput = document.querySelector("#privatePhotoInput");
       const uploadSubmit = document.querySelector("#uploadSubmit");
       const uploadStatus = document.querySelector("#uploadStatus");
+      const keypadDisplay = document.querySelector("#keypadDisplay");
+      const keypadCount = document.querySelector("#keypadCount");
+      const keypadClear = document.querySelector("#keypadClear");
+      const keypadDelete = document.querySelector("#keypadDelete");
+      const keypadSubmit = document.querySelector("#keypadSubmit");
+      const keypadStatus = document.querySelector("#keypadStatus");
+      const keypadDigitButtons = document.querySelectorAll("[data-keypad-digit]");
       const clientIdKey = "sector-message-drop-client-id";
       const uploadBucket = "private-message-uploads";
       const responseCooldownMs = 3500;
@@ -1539,6 +1665,17 @@
       const setUploadStatus = (message, type = "") => {
         uploadStatus.textContent = message;
         uploadStatus.className = type ? `upload-portal__status ${type}` : "upload-portal__status";
+      };
+
+      const setKeypadStatus = (message, type = "") => {
+        keypadStatus.textContent = message;
+        keypadStatus.className = type ? `keypad__status ${type}` : "keypad__status";
+      };
+
+      const updateKeypad = (digits = keypadDisplay.value) => {
+        keypadDisplay.value = digits.replace(/\D/g, "").slice(0, 12);
+        keypadCount.textContent = `${keypadDisplay.value.length}/12`;
+        keypadSubmit.disabled = keypadDisplay.value.length === 0;
       };
 
       const openUploadPortal = () => {
@@ -1765,6 +1902,59 @@
         }
       });
 
+      keypadDigitButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          if (keypadDisplay.value.length >= 12) return;
+          updateKeypad(`${keypadDisplay.value}${button.dataset.keypadDigit}`);
+          setKeypadStatus("");
+        });
+      });
+
+      keypadClear.addEventListener("click", () => {
+        updateKeypad("");
+        setKeypadStatus("");
+      });
+
+      keypadDelete.addEventListener("click", () => {
+        updateKeypad(keypadDisplay.value.slice(0, -1));
+        setKeypadStatus("");
+      });
+
+      keypadSubmit.addEventListener("click", async () => {
+        const digits = keypadDisplay.value;
+
+        if (!digits) {
+          setKeypadStatus("Enter at least one digit.", "is-error");
+          return;
+        }
+
+        if (!client) {
+          setKeypadStatus("Supabase link is not configured.", "is-error");
+          return;
+        }
+
+        keypadSubmit.disabled = true;
+        setKeypadStatus("Submitting...");
+
+        try {
+          const { data, error } = await withTimeout(client.rpc("submit_drop", {
+            p_message: `KEYPAD:${digits}`,
+            p_client_id: getClientId(),
+          }), 9000);
+
+          if (error) throw error;
+          if (!data?.ok) throw new Error(data?.message || "Digit submission failed.");
+
+          updateKeypad("");
+          setKeypadStatus("Digits submitted.");
+        } catch (error) {
+          console.error("Keypad submission failed:", error);
+          setKeypadStatus("Submission failed. Try again.", "is-error");
+        } finally {
+          keypadSubmit.disabled = keypadDisplay.value.length === 0;
+        }
+      });
+
       input.addEventListener("input", () => {
         if (!passwordPromptMode) {
           input.value = input.value.replace(/\s/g, "").slice(0, 26);
@@ -1802,6 +1992,7 @@
       updateDropWindowState();
       setInterval(updateDropWindowState, 30000);
       updateOnlineUsers(0);
+      updateKeypad();
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       recordVisit();
       initPresence();
