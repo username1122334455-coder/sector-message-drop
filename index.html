@@ -1345,6 +1345,184 @@
           font-size: 1.38rem;
         }
       }
+
+      /* Summer palette: bright, relaxed, and readable in direct daylight. */
+      :root {
+        --bg: #bfe9f2;
+        --panel: #fff8df;
+        --panel-2: #dff4e4;
+        --text: #173d43;
+        --muted: #4f7478;
+        --accent: #ef6f5e;
+        --accent-2: #f4bf3f;
+        --danger: #c74343;
+        --ink: #173d43;
+      }
+
+      body {
+        color: var(--text);
+        background:
+          radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.78) 0 3px, transparent 4px),
+          radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.5) 0 2px, transparent 3px),
+          linear-gradient(180deg, #82d8ec 0%, #c9f1ee 48%, #fff0ba 100%);
+        background-size: 34px 34px, 48px 48px, auto;
+      }
+
+      .console {
+        border-color: #184c52;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+          linear-gradient(180deg, #ff907c, #f27868);
+        background-size: 16px 16px, auto;
+        box-shadow: 0 4px 0 #184c52, 0 18px 42px rgba(25, 91, 99, 0.25);
+      }
+
+      .bulletin-board,
+      .panel {
+        border-color: #184c52;
+        background: #fff8df;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45), 0 3px 0 #184c52;
+      }
+
+      .bulletin-board {
+        background:
+          linear-gradient(90deg, rgba(45, 145, 151, 0.08) 1px, transparent 1px),
+          #fff4c9;
+        background-size: 14px 14px;
+      }
+
+      .bulletin-board__photo {
+        border-color: #184c52;
+        box-shadow: 3px 3px 0 rgba(24, 76, 82, 0.24);
+      }
+
+      .bulletin-board__copy {
+        border-color: rgba(24, 76, 82, 0.4);
+        background: linear-gradient(180deg, #fffdf1, #fff0b9);
+      }
+
+      .bulletin-board__message {
+        color: #24565b;
+      }
+
+      .bulletin-board__link,
+      .bulletin-board__link:hover,
+      .bulletin-board__link:focus-visible {
+        color: #d65348;
+      }
+
+      .panel {
+        background:
+          linear-gradient(rgba(42, 139, 146, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(42, 139, 146, 0.07) 1px, transparent 1px),
+          linear-gradient(180deg, #effcf4, #d9f3e5);
+        background-size: 18px 18px, 18px 18px, auto;
+      }
+
+      .clock-chip {
+        border-color: #184c52;
+        background: #237f87;
+        color: #fff3a8;
+      }
+
+      textarea {
+        border-color: #184c52;
+        background: #fffdf2;
+        color: #17484d;
+        box-shadow: inset 2px 2px 0 rgba(24, 76, 82, 0.12);
+      }
+
+      textarea::placeholder {
+        color: #66868a;
+      }
+
+      textarea:focus,
+      .panel.is-active textarea {
+        border-color: #ef6f5e;
+        box-shadow: inset 2px 2px 0 rgba(24, 76, 82, 0.1), 0 0 0 3px rgba(239, 111, 94, 0.2);
+      }
+
+      .typing-caret {
+        background: #ef6f5e;
+      }
+
+      button,
+      .keypad button {
+        border-color: #184c52;
+        background: linear-gradient(180deg, #ffe47d, #f8bd3e);
+        color: #173d43;
+        box-shadow: 0 4px 0 #184c52;
+      }
+
+      button:hover:not(:disabled),
+      button.has-text {
+        box-shadow: 0 5px 0 #184c52;
+        filter: brightness(1.03) saturate(1.05);
+      }
+
+      button:active:not(:disabled) {
+        box-shadow: 0 1px 0 #184c52;
+      }
+
+      .keypad {
+        padding: 14px;
+        border: 2px solid rgba(24, 76, 82, 0.32);
+        background: rgba(255, 253, 242, 0.82);
+      }
+
+      .keypad__display {
+        height: 54px;
+        border-color: #184c52;
+        background: #2a8b92;
+        color: #fff8cf;
+        box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.12);
+      }
+
+      .keypad__key--utility {
+        background: linear-gradient(180deg, #aee8dc, #70cbbb);
+      }
+
+      .keypad__submit {
+        background: linear-gradient(180deg, #ff9f83, #ef6f5e);
+        color: #173d43;
+      }
+
+      .keypad__status,
+      .feedback,
+      .terminal-log,
+      .stats-row {
+        color: #315f64;
+      }
+
+      .feedback,
+      .stats-row {
+        border-color: rgba(24, 76, 82, 0.28);
+        background: rgba(255, 253, 242, 0.72);
+      }
+
+      .mission-alert {
+        border-color: #184c52;
+        background: #fff2b8;
+        box-shadow: 3px 3px 0 rgba(24, 76, 82, 0.25);
+      }
+
+      .upload-portal {
+        background: rgba(21, 76, 82, 0.55);
+      }
+
+      .upload-portal__panel {
+        border-color: #184c52;
+        background:
+          linear-gradient(90deg, rgba(42, 139, 146, 0.08) 1px, transparent 1px),
+          linear-gradient(180deg, #fffdf2, #dff4e4);
+        box-shadow: 0 4px 0 #184c52, 0 18px 36px rgba(24, 76, 82, 0.28);
+      }
+
+      .upload-portal input[type="file"],
+      .upload-portal__drop {
+        border-color: #184c52;
+        background: #fffdf2;
+      }
     </style>
   </head>
   <body>
@@ -1382,18 +1560,13 @@
 
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
-          <section class="keypad" aria-labelledby="keypadTitle">
-            <div class="keypad__head">
-              <h2 class="keypad__title" id="keypadTitle">Digit Entry</h2>
-              <span class="keypad__count" id="keypadCount">0/12</span>
-            </div>
+          <section class="keypad" aria-label="Digital keypad">
             <input
               class="keypad__display"
               id="keypadDisplay"
               type="text"
               inputmode="numeric"
               maxlength="12"
-              placeholder="ENTER DIGITS"
               aria-label="Entered digits"
               readonly
             />
@@ -1411,7 +1584,7 @@
               <button type="button" data-keypad-digit="0">0</button>
               <button class="keypad__key--utility" id="keypadDelete" type="button">DEL</button>
             </div>
-            <button class="keypad__submit" id="keypadSubmit" type="button">SUBMIT DIGITS</button>
+            <button class="keypad__submit" id="keypadSubmit" type="button">ENTER</button>
             <p class="keypad__status" id="keypadStatus" role="status" aria-live="polite"></p>
           </section>
           <div class="stats-row" aria-label="Terminal activity stats">
@@ -1468,7 +1641,6 @@
       const uploadSubmit = document.querySelector("#uploadSubmit");
       const uploadStatus = document.querySelector("#uploadStatus");
       const keypadDisplay = document.querySelector("#keypadDisplay");
-      const keypadCount = document.querySelector("#keypadCount");
       const keypadClear = document.querySelector("#keypadClear");
       const keypadDelete = document.querySelector("#keypadDelete");
       const keypadSubmit = document.querySelector("#keypadSubmit");
@@ -1674,7 +1846,6 @@
 
       const updateKeypad = (digits = keypadDisplay.value) => {
         keypadDisplay.value = digits.replace(/\D/g, "").slice(0, 12);
-        keypadCount.textContent = `${keypadDisplay.value.length}/12`;
         keypadSubmit.disabled = keypadDisplay.value.length === 0;
       };
 
