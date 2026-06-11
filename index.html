@@ -938,125 +938,6 @@
         color: #7a4f1d;
       }
 
-      .upload-portal {
-        position: fixed;
-        inset: 0;
-        z-index: 20;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 18px;
-        background: rgba(8, 9, 7, 0.62);
-      }
-
-      .upload-portal.is-open {
-        display: flex;
-      }
-
-      .upload-portal__panel {
-        width: min(100%, 430px);
-        border: 3px solid #171911;
-        border-radius: 7px;
-        background:
-          linear-gradient(90deg, rgba(79, 111, 53, 0.08) 1px, transparent 1px),
-          linear-gradient(#fff8dd, #dccb9a);
-        background-size: 14px 14px, auto;
-        box-shadow: 0 4px 0 #171911, 0 18px 36px rgba(0, 0, 0, 0.32);
-        padding: 16px;
-      }
-
-      .upload-portal__head {
-        display: flex;
-        align-items: start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 14px;
-      }
-
-      .upload-portal h2,
-      .upload-portal p,
-      .upload-portal label,
-      .upload-portal__status {
-        margin: 0;
-        color: #261f15;
-        letter-spacing: 0;
-      }
-
-      .upload-portal h2 {
-        font-family: "Patrick Hand SC", "Trebuchet MS", Verdana, Arial, sans-serif;
-        font-size: 1.6rem;
-        line-height: 1;
-        text-transform: uppercase;
-      }
-
-      .upload-portal p {
-        margin-top: 6px;
-        font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
-        font-size: 0.92rem;
-        line-height: 1.35;
-      }
-
-      .upload-portal__close {
-        flex: 0 0 42px;
-        width: 42px;
-        height: 42px;
-        padding: 0;
-        font-size: 1.4rem;
-        line-height: 1;
-      }
-
-      .upload-portal__drop {
-        display: grid;
-        gap: 8px;
-        margin-top: 12px;
-        padding: 14px;
-        border: 2px dashed rgba(23, 25, 17, 0.42);
-        border-radius: 5px;
-        background: rgba(255, 248, 221, 0.78);
-      }
-
-      .upload-portal label,
-      .upload-portal__status {
-        font-family: "Share Tech Mono", monospace;
-        font-size: 0.86rem;
-        text-transform: uppercase;
-      }
-
-      .upload-portal input[type="file"] {
-        width: 100%;
-        min-height: 48px;
-        border: 2px solid #171911;
-        border-radius: 5px;
-        background: #fbf5dd;
-        color: #171911;
-        font: 0.95rem "Trebuchet MS", Verdana, Arial, sans-serif;
-        padding: 10px;
-      }
-
-      .upload-portal__actions {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        margin-top: 14px;
-      }
-
-      .upload-portal__submit {
-        width: 100%;
-      }
-
-      .upload-portal__status {
-        min-height: 20px;
-        color: #4d4638;
-      }
-
-      .upload-portal__status.is-error {
-        color: var(--danger);
-      }
-
-      .upload-portal__status.is-success {
-        color: #263f1b;
-      }
-
       .panel {
         gap: 12px;
         padding: clamp(14px, 4vw, 22px);
@@ -1331,19 +1212,6 @@
           grid-template-columns: 1fr;
         }
 
-        .upload-portal {
-          align-items: end;
-          padding: 12px;
-        }
-
-        .upload-portal__panel {
-          width: 100%;
-          padding: 14px;
-        }
-
-        .upload-portal h2 {
-          font-size: 1.38rem;
-        }
       }
 
       /* Summer palette: bright, relaxed, and readable in direct daylight. */
@@ -1506,23 +1374,6 @@
         box-shadow: 3px 3px 0 rgba(24, 76, 82, 0.25);
       }
 
-      .upload-portal {
-        background: rgba(21, 76, 82, 0.55);
-      }
-
-      .upload-portal__panel {
-        border-color: #184c52;
-        background:
-          linear-gradient(90deg, rgba(42, 139, 146, 0.08) 1px, transparent 1px),
-          linear-gradient(180deg, #fffdf2, #dff4e4);
-        box-shadow: 0 4px 0 #184c52, 0 18px 36px rgba(24, 76, 82, 0.28);
-      }
-
-      .upload-portal input[type="file"],
-      .upload-portal__drop {
-        border-color: #184c52;
-        background: #fffdf2;
-      }
     </style>
   </head>
   <body>
@@ -1594,28 +1445,6 @@
       </section>
     </main>
 
-    <section class="upload-portal" id="uploadPortal" aria-hidden="true" aria-labelledby="uploadPortalTitle">
-      <div class="upload-portal__panel" role="dialog" aria-modal="true">
-        <div class="upload-portal__head">
-          <div>
-            <h2 id="uploadPortalTitle">File Drop</h2>
-            <p>Choose one picture or PDF to submit.</p>
-          </div>
-          <button class="upload-portal__close" id="uploadPortalClose" type="button" aria-label="Close upload portal">×</button>
-        </div>
-        <form id="uploadForm" novalidate>
-          <div class="upload-portal__drop">
-            <label for="privatePhotoInput">Picture or PDF file</label>
-            <input id="privatePhotoInput" name="privatePhoto" type="file" accept="image/*,.pdf,application/pdf" />
-          </div>
-          <div class="upload-portal__actions">
-            <button class="upload-portal__submit" id="uploadSubmit" type="submit">UPLOAD</button>
-            <p class="upload-portal__status" id="uploadStatus" role="status" aria-live="polite"></p>
-          </div>
-        </form>
-      </div>
-    </section>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
@@ -1634,12 +1463,6 @@
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
       const privateMessageLink = document.querySelector("#privateMessageLink");
-      const uploadPortal = document.querySelector("#uploadPortal");
-      const uploadPortalClose = document.querySelector("#uploadPortalClose");
-      const uploadForm = document.querySelector("#uploadForm");
-      const privatePhotoInput = document.querySelector("#privatePhotoInput");
-      const uploadSubmit = document.querySelector("#uploadSubmit");
-      const uploadStatus = document.querySelector("#uploadStatus");
       const keypadDisplay = document.querySelector("#keypadDisplay");
       const keypadClear = document.querySelector("#keypadClear");
       const keypadDelete = document.querySelector("#keypadDelete");
@@ -1647,7 +1470,6 @@
       const keypadStatus = document.querySelector("#keypadStatus");
       const keypadDigitButtons = document.querySelectorAll("[data-keypad-digit]");
       const clientIdKey = "sector-message-drop-client-id";
-      const uploadBucket = "private-message-uploads";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1834,11 +1656,6 @@
         }
       };
 
-      const setUploadStatus = (message, type = "") => {
-        uploadStatus.textContent = message;
-        uploadStatus.className = type ? `upload-portal__status ${type}` : "upload-portal__status";
-      };
-
       const setKeypadStatus = (message, type = "") => {
         keypadStatus.textContent = message;
         keypadStatus.className = type ? `keypad__status ${type}` : "keypad__status";
@@ -1847,47 +1664,6 @@
       const updateKeypad = (digits = keypadDisplay.value) => {
         keypadDisplay.value = digits.replace(/\D/g, "").slice(0, 12);
         keypadSubmit.disabled = keypadDisplay.value.length === 0;
-      };
-
-      const openUploadPortal = () => {
-        uploadPortal.classList.add("is-open");
-        uploadPortal.setAttribute("aria-hidden", "false");
-        setUploadStatus("");
-        setTimeout(() => privatePhotoInput.focus(), 50);
-      };
-
-      const closeUploadPortal = () => {
-        uploadPortal.classList.remove("is-open");
-        uploadPortal.setAttribute("aria-hidden", "true");
-        uploadForm.reset();
-        setUploadStatus("");
-        privateMessageLink?.focus();
-      };
-
-      const getUploadPath = (file) => {
-        const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const date = new Date().toISOString().slice(0, 10);
-        const randomId = crypto.randomUUID();
-        return `${date}/${Date.now()}-${randomId}.${extension || "jpg"}`;
-      };
-
-      const uploadPrivatePhoto = async (file) => {
-        if (!client) {
-          throw new Error("Supabase link is not configured.");
-        }
-
-        const path = getUploadPath(file);
-        const { error } = await withTimeout(client.storage.from(uploadBucket).upload(path, file, {
-          cacheControl: "3600",
-          contentType: file.type || "image/jpeg",
-          upsert: false,
-        }), 20000);
-
-        if (error) {
-          throw error;
-        }
-
-        return path;
       };
 
       const showTerminalLog = (message) => {
@@ -2012,65 +1788,6 @@
         recordPrivateMessageClick().finally(() => {
           window.location.href = privateMessageLink.href;
         });
-      });
-
-      uploadPortalClose?.addEventListener("click", closeUploadPortal);
-
-      uploadPortal?.addEventListener("click", (event) => {
-        if (event.target === uploadPortal) {
-          closeUploadPortal();
-        }
-      });
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && uploadPortal.classList.contains("is-open")) {
-          closeUploadPortal();
-        }
-      });
-
-      uploadForm?.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        const file = privatePhotoInput.files?.[0];
-
-        if (!file) {
-          setUploadStatus("Choose a picture first.", "is-error");
-          return;
-        }
-
-        const isAcceptedFile = file.type.startsWith("image/") ||
-          file.type === "application/pdf" ||
-          file.name.toLowerCase().endsWith(".pdf");
-
-        if (!isAcceptedFile) {
-          setUploadStatus("Only picture or PDF files are accepted.", "is-error");
-          return;
-        }
-
-        if (file.size > 10 * 1024 * 1024) {
-          setUploadStatus("File must be under 10 MB.", "is-error");
-          return;
-        }
-
-        uploadSubmit.disabled = true;
-        setUploadStatus("Uploading...");
-
-        try {
-          await uploadPrivatePhoto(file);
-          setUploadStatus("Picture submitted.", "is-success");
-          uploadForm.reset();
-        } catch (error) {
-          console.error("Private upload failed:", error);
-          const errorMessage = error?.message || "";
-          const uploadMessage = /mime type/i.test(errorMessage)
-            ? "Upload temporarily unavailable. Try again later."
-            : errorMessage
-              ? `Upload failed: ${errorMessage}`
-              : "Upload failed. Check Supabase Storage.";
-          setUploadStatus(uploadMessage, "is-error");
-        } finally {
-          uploadSubmit.disabled = false;
-        }
       });
 
       keypadDigitButtons.forEach((button) => {
