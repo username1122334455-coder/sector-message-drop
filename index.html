@@ -1289,39 +1289,6 @@
         text-transform: uppercase;
       }
 
-      .command-strip {
-        display: grid;
-        gap: 6px;
-        padding: 8px 10px;
-        border: 2px solid rgba(24, 76, 82, 0.28);
-        border-radius: 4px;
-        background: rgba(255, 253, 242, 0.76);
-        color: #315f64;
-        font-family: "Share Tech Mono", monospace;
-        font-size: 0.72rem;
-        text-transform: uppercase;
-      }
-
-      .command-strip__label {
-        color: #ef6f5e;
-      }
-
-      .command-strip__items {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px 8px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .command-strip__items li {
-        padding: 3px 7px;
-        border: 1px solid rgba(24, 76, 82, 0.25);
-        border-radius: 999px;
-        background: rgba(255, 240, 186, 0.8);
-      }
-
       .mission-alert {
         width: calc(100% - 120px);
         border: 3px solid #171911;
@@ -1562,9 +1529,9 @@
     <main class="console" aria-label="Sector message mission console">
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
-          <img class="bulletin-board__photo" src="assets/bulletin-photo.png?v=photo-20260611021129" alt="Bulletin portrait" />
+          <img class="bulletin-board__photo" src="assets/bulletin-photo.png?v=photo-20260611021303" alt="Bulletin portrait" />
           <div class="bulletin-board__copy">
-            <p class="bulletin-board__message">Today is Tuesday, June 9, 2026. Have a fantastic day! (<a class="bulletin-board__link" id="privateMessageLink" href="assets/clickhere.pdf?v=pdf-20260611021129" download="clickhere.pdf" aria-label="Download linked file">CLICK HERE</a>)</p>
+            <p class="bulletin-board__message">Today is Wednesday, June 10, 2026. Have a fantastic day! (<a class="bulletin-board__link" id="privateMessageLink" href="assets/clickhere.pdf?v=pdf-20260611021303" download="clickhere.pdf" aria-label="Download linked file">CLICK HERE</a>)</p>
           </div>
         </aside>
         <section class="panel" aria-label="Message input">
@@ -1623,16 +1590,6 @@
           <div class="stats-row" aria-label="Terminal activity stats">
             <span id="usersOnline">0 USERS ONLINE</span>
           </div>
-          <section class="command-strip" aria-label="Active commands">
-            <div class="command-strip__label">ACTIVE COMMANDS</div>
-            <ul class="command-strip__items">
-              <li>record_visit</li>
-              <li>latest_site_visit_marker</li>
-              <li>submit_drop</li>
-              <li>publish-bulletin</li>
-              <li>visitor-watcher</li>
-            </ul>
-          </section>
         </section>
       </section>
     </main>
