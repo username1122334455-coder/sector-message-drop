@@ -1082,8 +1082,12 @@
 
       .keypad__grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px;
+      }
+
+      .keypad__grid--actions {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
       }
 
       .keypad button {
@@ -1098,6 +1102,10 @@
       .keypad__key--utility {
         background: #d8d0b3;
         color: #171911;
+      }
+
+      .keypad__key--operator {
+        background: linear-gradient(180deg, #aee8dc, #70cbbb);
       }
 
       .keypad__submit {
@@ -1512,6 +1520,10 @@
         background: linear-gradient(180deg, #73b9ad, #4f8d86);
       }
 
+      body.theme-night .keypad__key--operator {
+        background: linear-gradient(180deg, #82cbbf, #579b92);
+      }
+
       body.theme-night .keypad__submit {
         background: linear-gradient(180deg, #ff9b82, #e96f62);
       }
@@ -1577,31 +1589,38 @@
 
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
           <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
-          <section class="keypad" aria-label="Digital keypad">
+          <section class="keypad" aria-label="Calculator">
             <input
               class="keypad__display"
               id="keypadDisplay"
               type="text"
-              inputmode="numeric"
-              maxlength="12"
-              aria-label="Entered digits"
+              inputmode="decimal"
+              maxlength="64"
+              aria-label="Calculator display"
               readonly
             />
-            <div class="keypad__grid" aria-label="Digital keypad">
-              <button type="button" data-keypad-digit="1">1</button>
-              <button type="button" data-keypad-digit="2">2</button>
-              <button type="button" data-keypad-digit="3">3</button>
-              <button type="button" data-keypad-digit="4">4</button>
-              <button type="button" data-keypad-digit="5">5</button>
-              <button type="button" data-keypad-digit="6">6</button>
-              <button type="button" data-keypad-digit="7">7</button>
-              <button type="button" data-keypad-digit="8">8</button>
-              <button type="button" data-keypad-digit="9">9</button>
-              <button class="keypad__key--utility" id="keypadClear" type="button">CLEAR</button>
-              <button type="button" data-keypad-digit="0">0</button>
-              <button class="keypad__key--utility" id="keypadDelete" type="button">DEL</button>
+            <div class="keypad__grid" aria-label="Calculator keys">
+              <button type="button" data-calculator-value="7">7</button>
+              <button type="button" data-calculator-value="8">8</button>
+              <button type="button" data-calculator-value="9">9</button>
+              <button class="keypad__key--operator" type="button" data-calculator-value="/">÷</button>
+              <button type="button" data-calculator-value="4">4</button>
+              <button type="button" data-calculator-value="5">5</button>
+              <button type="button" data-calculator-value="6">6</button>
+              <button class="keypad__key--operator" type="button" data-calculator-value="*">×</button>
+              <button type="button" data-calculator-value="1">1</button>
+              <button type="button" data-calculator-value="2">2</button>
+              <button type="button" data-calculator-value="3">3</button>
+              <button class="keypad__key--operator" type="button" data-calculator-value="-">−</button>
+              <button class="keypad__key--utility" id="keypadClear" type="button">C</button>
+              <button type="button" data-calculator-value="0">0</button>
+              <button type="button" data-calculator-value=".">.</button>
+              <button class="keypad__key--operator" type="button" data-calculator-value="+">+</button>
             </div>
-            <button class="keypad__submit" id="keypadSubmit" type="button">ENTER</button>
+            <div class="keypad__grid keypad__grid--actions">
+              <button class="keypad__key--utility" id="keypadDelete" type="button">DEL</button>
+              <button class="keypad__submit" id="keypadSubmit" type="button">=</button>
+            </div>
             <p class="keypad__status" id="keypadStatus" role="status" aria-live="polite"></p>
           </section>
           <div class="stats-row" aria-label="Terminal activity stats">
@@ -1634,7 +1653,7 @@
       const keypadDelete = document.querySelector("#keypadDelete");
       const keypadSubmit = document.querySelector("#keypadSubmit");
       const keypadStatus = document.querySelector("#keypadStatus");
-      const keypadDigitButtons = document.querySelectorAll("[data-keypad-digit]");
+      const calculatorValueButtons = document.querySelectorAll("[data-calculator-value]");
       const clientIdKey = "sector-message-drop-client-id";
       const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
       const previewTheme = isLocalPreview
@@ -1838,9 +1857,100 @@
         keypadStatus.className = type ? `keypad__status ${type}` : "keypad__status";
       };
 
-      const updateKeypad = (digits = keypadDisplay.value) => {
-        keypadDisplay.value = digits.replace(/\D/g, "").slice(0, 12);
-        keypadSubmit.disabled = keypadDisplay.value.length === 0;
+      let calculatorJustEvaluated = false;
+
+      const formatCalculatorExpression = (expression) => expression
+        .replace(/\*/g, "×")
+        .replace(/\//g, "÷")
+        .replace(/-/g, "−");
+
+      const updateCalculator = (expression = keypadDisplay.dataset.expression || "") => {
+        const safeExpression = expression.slice(0, 64);
+        keypadDisplay.dataset.expression = safeExpression;
+        keypadDisplay.value = formatCalculatorExpression(safeExpression);
+        keypadSubmit.disabled = safeExpression.length === 0;
+      };
+
+      const evaluateCalculatorExpression = (expression) => {
+        const source = expression.replace(/\s/g, "");
+        if (!source || !/^[0-9+\-*/().]+$/.test(source)) {
+          throw new Error("Invalid calculation.");
+        }
+
+        const tokens = source.match(/\d*\.?\d+|[()+\-*/]/g) || [];
+        if (tokens.join("") !== source) {
+          throw new Error("Invalid calculation.");
+        }
+
+        let index = 0;
+        const parseExpression = () => {
+          let value = parseTerm();
+          while (tokens[index] === "+" || tokens[index] === "-") {
+            const operator = tokens[index++];
+            const right = parseTerm();
+            value = operator === "+" ? value + right : value - right;
+          }
+          return value;
+        };
+
+        const parseTerm = () => {
+          let value = parseFactor();
+          while (tokens[index] === "*" || tokens[index] === "/") {
+            const operator = tokens[index++];
+            const right = parseFactor();
+            if (operator === "/" && right === 0) {
+              throw new Error("Cannot divide by zero.");
+            }
+            value = operator === "*" ? value * right : value / right;
+          }
+          return value;
+        };
+
+        const parseFactor = () => {
+          const token = tokens[index++];
+          if (token === "+" || token === "-") {
+            const value = parseFactor();
+            return token === "-" ? -value : value;
+          }
+          if (token === "(") {
+            const value = parseExpression();
+            if (tokens[index++] !== ")") throw new Error("Missing parenthesis.");
+            return value;
+          }
+          const value = Number(token);
+          if (!Number.isFinite(value)) throw new Error("Invalid number.");
+          return value;
+        };
+
+        const result = parseExpression();
+        if (index !== tokens.length || !Number.isFinite(result)) {
+          throw new Error("Invalid calculation.");
+        }
+        return Number.parseFloat(result.toPrecision(12)).toString();
+      };
+
+      const appendCalculatorValue = (value) => {
+        let expression = keypadDisplay.dataset.expression || "";
+        const isOperator = ["+", "-", "*", "/"].includes(value);
+
+        if (calculatorJustEvaluated && !isOperator) {
+          expression = "";
+        }
+        calculatorJustEvaluated = false;
+
+        if (value === ".") {
+          const currentNumber = expression.split(/[+\-*/]/).pop();
+          if (currentNumber.includes(".")) return;
+          if (!currentNumber) value = "0.";
+        }
+
+        if (isOperator && /[+\-*/]$/.test(expression)) {
+          expression = `${expression.slice(0, -1)}${value}`;
+        } else {
+          expression += value;
+        }
+
+        updateCalculator(expression);
       };
 
       const showTerminalLog = (message) => {
@@ -1967,56 +2077,67 @@
         });
       });
 
-      keypadDigitButtons.forEach((button) => {
+      calculatorValueButtons.forEach((button) => {
         button.addEventListener("click", () => {
-          if (keypadDisplay.value.length >= 12) return;
-          updateKeypad(`${keypadDisplay.value}${button.dataset.keypadDigit}`);
+          appendCalculatorValue(button.dataset.calculatorValue);
           setKeypadStatus("");
         });
       });
 
       keypadClear.addEventListener("click", () => {
-        updateKeypad("");
+        calculatorJustEvaluated = false;
+        updateCalculator("");
         setKeypadStatus("");
       });
 
       keypadDelete.addEventListener("click", () => {
-        updateKeypad(keypadDisplay.value.slice(0, -1));
+        calculatorJustEvaluated = false;
+        updateCalculator((keypadDisplay.dataset.expression || "").slice(0, -1));
         setKeypadStatus("");
       });
 
       keypadSubmit.addEventListener("click", async () => {
-        const digits = keypadDisplay.value;
+        const expression = keypadDisplay.dataset.expression || "";
 
-        if (!digits) {
-          setKeypadStatus("Enter at least one digit.", "is-error");
+        if (!expression) {
+          setKeypadStatus("Enter a calculation.", "is-error");
           return;
         }
 
-        if (!client) {
-          setKeypadStatus("Supabase link is not configured.", "is-error");
+        let result;
+        try {
+          result = evaluateCalculatorExpression(expression);
+        } catch (error) {
+          setKeypadStatus(error.message || "Invalid calculation.", "is-error");
+          return;
+        }
+
+        updateCalculator(result);
+        calculatorJustEvaluated = true;
+
+        if (!client || isLocalPreview) {
+          setKeypadStatus(`= ${result}`);
           return;
         }
 
         keypadSubmit.disabled = true;
-        setKeypadStatus("Submitting...");
+        setKeypadStatus("Saving calculation...");
 
         try {
           const { data, error } = await withTimeout(client.rpc("submit_drop", {
-            p_message: `KEYPAD:${digits}`,
+            p_message: `CALC:${expression}=${result}`,
             p_client_id: getClientId(),
           }), 9000);
 
           if (error) throw error;
-          if (!data?.ok) throw new Error(data?.message || "Digit submission failed.");
+          if (!data?.ok) throw new Error(data?.message || "Calculation storage failed.");
 
-          updateKeypad("");
-          setKeypadStatus("Digits submitted.");
+          setKeypadStatus(`= ${result} · saved`);
         } catch (error) {
-          console.error("Keypad submission failed:", error);
-          setKeypadStatus("Submission failed. Try again.", "is-error");
+          console.error("Calculator storage failed:", error);
+          setKeypadStatus(`= ${result} · save failed`, "is-error");
         } finally {
-          keypadSubmit.disabled = keypadDisplay.value.length === 0;
+          keypadSubmit.disabled = false;
         }
       });
 
@@ -2059,7 +2180,7 @@
       updateDropWindowState();
       setInterval(updateDropWindowState, 30000);
       updateOnlineUsers(0);
-      updateKeypad();
+      updateCalculator();
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       if (!isLocalPreview) {
         recordVisit();
