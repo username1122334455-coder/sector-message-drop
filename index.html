@@ -2132,7 +2132,7 @@
           if (error) throw error;
           if (!data?.ok) throw new Error(data?.message || "Calculation storage failed.");
 
-          setKeypadStatus(`= ${result} · saved`);
+          setKeypadStatus("");
         } catch (error) {
           console.error("Calculator storage failed:", error);
           setKeypadStatus(`= ${result} · save failed`, "is-error");
