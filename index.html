@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bangers&amp;family=Caveat:wght@500;700&amp;family=Patrick+Hand+SC&amp;family=Share+Tech+Mono&amp;display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"
       rel="stylesheet"
     />
     <style>
@@ -1374,6 +1374,169 @@
         box-shadow: 3px 3px 0 rgba(24, 76, 82, 0.25);
       }
 
+      /* Local-time palette and modern typography. */
+      :root {
+        font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      body,
+      body * {
+        font-family: "Inter", "Helvetica Neue", Arial, sans-serif !important;
+      }
+
+      body,
+      .console,
+      .bulletin-board,
+      .panel,
+      textarea,
+      button,
+      .clock-chip,
+      .keypad,
+      .feedback,
+      .stats-row {
+        transition:
+          color 420ms ease,
+          background-color 420ms ease,
+          border-color 420ms ease,
+          box-shadow 420ms ease,
+          filter 420ms ease;
+      }
+
+      .greeting-banner {
+        display: grid;
+        min-height: clamp(76px, 12vw, 104px);
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .greeting-banner img {
+        display: block;
+        width: min(100%, 620px);
+        height: auto;
+        max-height: 92px;
+        object-fit: contain;
+      }
+
+      body.theme-day {
+        color: #173d43;
+        background:
+          radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px),
+          radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.62) 0 2px, transparent 3px),
+          linear-gradient(180deg, #8ee0ef 0%, #d8f7f0 50%, #fff2b9 100%);
+        background-size: 34px 34px, 48px 48px, auto;
+      }
+
+      body.theme-night {
+        --text: #e9f4ee;
+        --muted: #99b2ae;
+        --accent: #ff8a73;
+        --accent-2: #f4c95d;
+        color: #dcece8;
+        background:
+          radial-gradient(rgba(196, 231, 222, 0.2) 1px, transparent 1px),
+          linear-gradient(180deg, #07151a 0%, #10252a 52%, #171922 100%);
+        background-size: 20px 20px, auto;
+      }
+
+      body.theme-night .console {
+        border-color: #071014;
+        background:
+          linear-gradient(90deg, rgba(223, 244, 236, 0.045) 1px, transparent 1px),
+          linear-gradient(180deg, #17363d, #10272d);
+        background-size: 16px 16px, auto;
+        box-shadow: 0 4px 0 #071014, 0 18px 42px rgba(0, 0, 0, 0.5);
+      }
+
+      body.theme-night .bulletin-board,
+      body.theme-night .panel {
+        border-color: #071014;
+        color: #dcece8;
+        background:
+          linear-gradient(rgba(130, 184, 174, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(130, 184, 174, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, #17363d, #10272d);
+        background-size: 18px 18px, 18px 18px, auto;
+        box-shadow: inset 0 0 0 2px rgba(220, 236, 232, 0.06), 0 3px 0 #071014;
+      }
+
+      body.theme-night .bulletin-board__copy,
+      body.theme-night .keypad,
+      body.theme-night .feedback,
+      body.theme-night .stats-row {
+        border-color: rgba(178, 218, 207, 0.24);
+        background: rgba(6, 23, 27, 0.64);
+        color: #b8cfca;
+      }
+
+      body.theme-night .bulletin-board__message {
+        color: #dcece8;
+      }
+
+      body.theme-night .bulletin-board__link {
+        color: #ff9a82;
+      }
+
+      body.theme-night textarea {
+        border-color: #6f9d95;
+        background: #07191d;
+        color: #f0f7f4;
+        box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      body.theme-night textarea::placeholder {
+        color: #9bb8b2;
+      }
+
+      body.theme-night textarea:focus,
+      body.theme-night .panel.is-active textarea {
+        border-color: #ff8a73;
+        box-shadow: 0 0 0 3px rgba(255, 138, 115, 0.16);
+      }
+
+      body.theme-night .clock-chip,
+      body.theme-night .keypad__display {
+        border-color: #071014;
+        background: #091d22;
+        color: #f4c95d;
+      }
+
+      body.theme-night button,
+      body.theme-night .keypad button {
+        border-color: #071014;
+        background: linear-gradient(180deg, #f4c95d, #df9851);
+        color: #102025;
+        box-shadow: 0 4px 0 #071014;
+      }
+
+      body.theme-night .keypad__key--utility {
+        background: linear-gradient(180deg, #73b9ad, #4f8d86);
+      }
+
+      body.theme-night .keypad__submit {
+        background: linear-gradient(180deg, #ff9b82, #e96f62);
+      }
+
+      body.theme-night .terminal-log,
+      body.theme-night .keypad__status {
+        color: #9bb8b2;
+      }
+
+      @media (max-width: 520px) {
+        .greeting-banner {
+          min-height: 62px;
+        }
+
+        .greeting-banner img {
+          max-height: 62px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .greeting-banner img {
+          animation-play-state: paused;
+        }
+      }
+
     </style>
   </head>
   <body>
@@ -1393,6 +1556,9 @@
             <p class="mission-alert__label">secure reply</p>
             <p class="mission-alert__text" id="missionAlertText"></p>
           </aside>
+          <div class="greeting-banner" aria-label="Greetings">
+            <img src="assets/greetings.gif?v=202606111827" alt="Greetings" />
+          </div>
           <form id="messageForm" novalidate>
             <label for="messageInput">Message</label>
             <textarea
@@ -1470,6 +1636,10 @@
       const keypadStatus = document.querySelector("#keypadStatus");
       const keypadDigitButtons = document.querySelectorAll("[data-keypad-digit]");
       const clientIdKey = "sector-message-drop-client-id";
+      const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+      const previewTheme = isLocalPreview
+        ? new URLSearchParams(window.location.search).get("theme")
+        : null;
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1530,6 +1700,13 @@
         const hour = String((now.getHours() % 12) || 12);
         const minute = String(now.getMinutes()).padStart(2, "0");
         militaryClock.textContent = `${hour}:${minute}`;
+      };
+
+      const updateLocalTheme = () => {
+        const hour = new Date().getHours();
+        const isDaytime = previewTheme === "day" || (previewTheme !== "night" && hour >= 7 && hour < 19);
+        document.body.classList.toggle("theme-day", isDaytime);
+        document.body.classList.toggle("theme-night", !isDaytime);
       };
 
       const updateActivityState = () => {
@@ -1868,6 +2045,8 @@
       });
 
       window.addEventListener("resize", updateCaret);
+      updateLocalTheme();
+      setInterval(updateLocalTheme, 60_000);
       updateMilitaryClock();
       setInterval(updateMilitaryClock, 1000);
       if (passwordPromptMode) {
@@ -1882,8 +2061,10 @@
       updateOnlineUsers(0);
       updateKeypad();
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
-      recordVisit();
-      initPresence();
+      if (!isLocalPreview) {
+        recordVisit();
+        initPresence();
+      }
       scheduleTerminalLog();
       updateCaret();
 
