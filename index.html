@@ -1938,32 +1938,57 @@
           });
       };
 
-      const recordVisit = async () => {
+      const getVisitorMetadata = () => {
+        const screenWidth = window.screen?.width || "";
+        const screenHeight = window.screen?.height || "";
+
+        return {
+          p_user_agent: navigator.userAgent || "",
+          p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          p_screen_size: screenWidth && screenHeight ? `${screenWidth}x${screenHeight}` : "",
+          p_platform: navigator.userAgentData?.platform || navigator.platform || "",
+          p_referrer: document.referrer || "",
+        };
+      };
+
+      const callRecordVisitRpc = async (path, includeMetadata = true) => {
+        const payload = {
+          p_client_id: getClientId(),
+          p_path: path,
+        };
+
+        if (includeMetadata) {
+          Object.assign(payload, getVisitorMetadata());
+        }
+
+        const { error } = await client.rpc("record_visit", payload);
+        if (error) throw error;
+      };
+
+      const recordVisitPath = async (path) => {
         if (!client) return;
 
         try {
-          const { error } = await client.rpc("record_visit", {
-            p_client_id: getClientId(),
-            p_path: window.location.pathname || "/",
-          });
-          if (error) throw error;
+          await callRecordVisitRpc(path, true);
+        } catch {
+          try {
+            await callRecordVisitRpc(path, false);
+          } catch {
+            // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
+          }
+        }
+      };
+
+      const recordVisit = async () => {
+        try {
+          await recordVisitPath(window.location.pathname || "/");
         } catch {
           // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
         }
       };
 
       const recordPrivateMessageClick = async () => {
-        if (!client) return;
-
-        try {
-          const { error } = await client.rpc("record_visit", {
-            p_client_id: getClientId(),
-            p_path: "click:private-msg",
-          });
-          if (error) throw error;
-        } catch {
-          // Click tracking should never block the download.
-        }
+        await recordVisitPath("click:private-msg");
       };
 
       const setKeypadStatus = (message, type = "") => {
