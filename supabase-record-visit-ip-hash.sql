@@ -1,3 +1,6 @@
+alter table public.visits
+add column if not exists ip_address text;
+
 create or replace function public.record_visit(
   p_client_id uuid,
   p_path text default '/'
@@ -32,11 +35,13 @@ begin
   insert into public.visits (
     client_hash,
     ip_hash,
+    ip_address,
     path
   )
   values (
     v_client_hash,
     v_ip_hash,
+    trim(v_ip),
     coalesce(nullif(trim(p_path), ''), '/')
   );
 
