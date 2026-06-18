@@ -1904,9 +1904,13 @@
 
       const getDisplayedOnlineCount = (count = 0) => {
         const presenceCount = Math.max(Number(count) || 0, 0);
-        const hourlyFloor = (new Date().getHours() % 5) + 1;
-        if (presenceCount > 5) return Math.min(presenceCount, 49);
-        return Math.max(presenceCount, hourlyFloor);
+        const now = new Date();
+        const hourlyFloor = (now.getHours() % 5) + 1;
+        const visibleBump = now.getMinutes() % 2 === 0 ? 2 : 3;
+        const baseCount = presenceCount > 5
+          ? presenceCount
+          : Math.max(presenceCount, hourlyFloor);
+        return Math.min(baseCount + visibleBump, 49);
       };
 
       const updateOnlineUsers = (count) => {
