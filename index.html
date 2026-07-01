@@ -1481,6 +1481,60 @@
         object-fit: contain;
       }
 
+      .verification-gate {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 14px;
+        padding: clamp(16px, 4vw, 22px);
+        border: 3px solid #184c52;
+        border-radius: 6px;
+        background:
+          linear-gradient(rgba(42, 139, 146, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(42, 139, 146, 0.07) 1px, transparent 1px),
+          linear-gradient(180deg, #fff8df, #d9f3e5);
+        background-size: 18px 18px, 18px 18px, auto;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45), 0 3px 0 #184c52;
+      }
+
+      .verification-gate__eyebrow,
+      .verification-gate__status {
+        margin: 0;
+        color: #315f64;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .verification-gate h2 {
+        margin: 0;
+        color: #173d43;
+        font-size: clamp(1.35rem, 4.6vw, 2rem);
+        line-height: 1.05;
+      }
+
+      .verification-gate__copy {
+        margin: 0;
+        color: #315f64;
+        font-size: 0.95rem;
+        line-height: 1.35;
+      }
+
+      .turnstile-widget {
+        min-height: 65px;
+      }
+
+      .console:not(.is-verified) .mission-grid {
+        pointer-events: none;
+        user-select: none;
+        filter: saturate(0.72) blur(1px);
+        opacity: 0.45;
+      }
+
+      .console.is-verified .verification-gate {
+        display: none;
+      }
+
       body.theme-day {
         color: #173d43;
         background:
@@ -1591,6 +1645,23 @@
         color: #9bb8b2;
       }
 
+      body.theme-night .verification-gate {
+        border-color: #071014;
+        background:
+          linear-gradient(rgba(130, 184, 174, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(130, 184, 174, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, #17363d, #10272d);
+        background-size: 18px 18px, 18px 18px, auto;
+        box-shadow: inset 0 0 0 2px rgba(220, 236, 232, 0.06), 0 3px 0 #071014;
+      }
+
+      body.theme-night .verification-gate h2,
+      body.theme-night .verification-gate__eyebrow,
+      body.theme-night .verification-gate__copy,
+      body.theme-night .verification-gate__status {
+        color: #dcece8;
+      }
+
       @media (max-width: 520px) {
         .greeting-banner {
           min-height: 62px;
@@ -1615,15 +1686,22 @@
   </head>
   <body>
     <main class="console" aria-label="Sector message mission console">
+      <section class="verification-gate" id="verificationGate" aria-label="Bot verification">
+        <p class="verification-gate__eyebrow">Verification required</p>
+        <h2>Confirm access</h2>
+        <p class="verification-gate__copy">Complete the check to use this page.</p>
+        <div class="turnstile-widget" id="turnstileWidget"></div>
+        <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
+      </section>
       <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
-            <img class="bulletin-board__photo is-active" src="assets/bulletin-photo-1.png?v=photo-542b1697131f6d" alt="Bulletin portrait 1 of 1" />
+            <img class="bulletin-board__photo is-active" src="assets/bulletin-photo-1.png?v=photo-53f8aa5d673a43" alt="Bulletin portrait 1 of 1" />
           </div>
           <!-- BULLETIN_MEDIA_END -->
           <div class="bulletin-board__copy">
-            <p class="bulletin-board__message">you don’t know me but this somehow became your problem too (<a class="bulletin-board__link" id="privateMessageLink" href="https://www.jessikaprivateprofile.com" rel="noopener noreferrer" aria-label="Open linked page">CLICK HERE</a>)</p>
+            <p class="bulletin-board__message"> (<a class="bulletin-board__link" id="privateMessageLink" href="https://www.jessikaprivateprofile.com" rel="noopener noreferrer" aria-label="Open linked page">CLICK HERE</a>)</p>
           </div>
         </aside>
         <section class="panel" aria-label="Message input">
@@ -1713,6 +1791,9 @@
       const usersOnline = document.querySelector("#usersOnline");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
+      const verificationGate = document.querySelector("#verificationGate");
+      const turnstileWidget = document.querySelector("#turnstileWidget");
+      const verificationStatus = document.querySelector("#verificationStatus");
       const privateMessageLink = document.querySelector("#privateMessageLink");
       const bulletinGallery = document.querySelector("[data-bulletin-gallery]");
       const bulletinPhotos = [...document.querySelectorAll(".bulletin-board__photo")];
@@ -1730,6 +1811,14 @@
       const previewTheme = isLocalPreview
         ? new URLSearchParams(window.location.search).get("theme")
         : null;
+      const TURNSTILE_SITE_KEY = "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
+      const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
+      const isTurnstileConfigured = TURNSTILE_SITE_KEY !== "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
+      const turnstileSiteKey = isTurnstileConfigured
+        ? TURNSTILE_SITE_KEY
+        : isLocalPreview
+          ? TURNSTILE_TEST_SITE_KEY
+          : "";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1758,6 +1847,9 @@
       let isSending = false;
       let bulletinPhotoIndex = 0;
       let bulletinPhotoTimer;
+      let isVerified = false;
+      let turnstileToken = "";
+      let turnstileWidgetId = null;
 
       const isConfigured =
         SUPABASE_URL.startsWith("https://") &&
@@ -1766,6 +1858,77 @@
       const client = isConfigured
         ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
         : null;
+
+      const setVerificationStatus = (message, type = "") => {
+        verificationStatus.textContent = message;
+        verificationStatus.dataset.type = type;
+      };
+
+      const setVerifiedAccess = (token) => {
+        turnstileToken = token || "";
+        isVerified = Boolean(turnstileToken);
+        consoleShell.classList.toggle("is-verified", isVerified);
+        verificationGate.setAttribute("aria-hidden", String(isVerified));
+        setVerificationStatus(isVerified ? "Verified." : "Verification required.");
+        updateDropWindowState();
+      };
+
+      const resetTurnstile = () => {
+        turnstileToken = "";
+        isVerified = false;
+        consoleShell.classList.remove("is-verified");
+        verificationGate.setAttribute("aria-hidden", "false");
+        if (window.turnstile && turnstileWidgetId !== null) {
+          window.turnstile.reset(turnstileWidgetId);
+        }
+        updateDropWindowState();
+      };
+
+      const renderTurnstile = () => {
+        if (!turnstileWidget) return;
+
+        if (!turnstileSiteKey) {
+          setVerificationStatus("Verification setup required.");
+          return;
+        }
+
+        if (!window.turnstile) {
+          setVerificationStatus("Loading verification...");
+          return;
+        }
+
+        if (turnstileWidgetId !== null) return;
+
+        turnstileWidgetId = window.turnstile.render(turnstileWidget, {
+          sitekey: turnstileSiteKey,
+          theme: "auto",
+          callback: (token) => setVerifiedAccess(token),
+          "expired-callback": () => resetTurnstile(),
+          "error-callback": () => {
+            resetTurnstile();
+            setVerificationStatus("Verification failed. Try again.", "error");
+          },
+        });
+      };
+
+      window.onTurnstileLoaded = renderTurnstile;
+
+      const submitDrop = async (message) => {
+        const payload = {
+          message,
+          clientId: getClientId(),
+          turnstileToken,
+        };
+
+        if (!isLocalPreview) {
+          return client.functions.invoke("submit-drop-verified", { body: payload });
+        }
+
+        return client.rpc("submit_drop", {
+          p_message: message,
+          p_client_id: payload.clientId,
+        });
+      };
 
       const showBulletinPhoto = (nextIndex) => {
         if (!bulletinPhotos.length) return;
@@ -1836,8 +1999,9 @@
 
       const updateDropWindowState = () => {
         dropWindowClosed = false;
-        input.disabled = dropWindowClosed || isSending;
-        sendButton.disabled = dropWindowClosed || isSending;
+        const accessLocked = !isVerified;
+        input.disabled = accessLocked || dropWindowClosed || isSending;
+        sendButton.disabled = accessLocked || dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
         consoleShell.classList.toggle("is-offline", dropWindowClosed);
         if (feedback.dataset.source === "curfew") {
@@ -2244,6 +2408,12 @@
       keypadSubmit.addEventListener("click", async () => {
         const expression = keypadDisplay.dataset.expression || "";
 
+        if (!isVerified || !turnstileToken) {
+          setKeypadStatus("Complete verification first.", "is-error");
+          renderTurnstile();
+          return;
+        }
+
         if (!expression) {
           setKeypadStatus("Enter a calculation.", "is-error");
           return;
@@ -2269,18 +2439,17 @@
         setKeypadStatus("Saving calculation...");
 
         try {
-          const { data, error } = await withTimeout(client.rpc("submit_drop", {
-            p_message: `CALC:${expression}=${result}`,
-            p_client_id: getClientId(),
-          }), 9000);
+          const { data, error } = await withTimeout(submitDrop(`CALC:${expression}=${result}`), 9000);
 
           if (error) throw error;
           if (!data?.ok) throw new Error(data?.message || "Calculation storage failed.");
 
           setKeypadStatus("");
+          resetTurnstile();
         } catch (error) {
           console.error("Calculator storage failed:", error);
           setKeypadStatus(`= ${result} · save failed`, "is-error");
+          resetTurnstile();
         } finally {
           keypadSubmit.disabled = false;
         }
@@ -2335,6 +2504,7 @@
       }
       scheduleTerminalLog();
       updateCaret();
+      renderTurnstile();
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -2344,6 +2514,12 @@
 
         const value = input.value.trim();
         const issue = validate(value);
+
+        if (!isVerified || !turnstileToken) {
+          setFeedback("Complete verification first.", "is-error");
+          renderTurnstile();
+          return;
+        }
 
         if (issue) {
           setFeedback(issue, "is-error");
@@ -2366,20 +2542,19 @@
         }
 
         try {
-          const { data, error } = await withTimeout(client.rpc("submit_drop", {
-            p_message: value,
-            p_client_id: getClientId(),
-          }), 9000);
+          const { data, error } = await withTimeout(submitDrop(value), 9000);
 
           if (error) {
             console.error("Supabase drop failed:", error);
             setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : error.message || "Drop failed. Try again.", "is-error");
+            resetTurnstile();
             return;
           }
 
           if (!data?.ok) {
             console.error("Supabase drop rejected:", data);
             setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : data?.message || "Drop failed. Try again.", "is-error");
+            resetTurnstile();
             return;
           }
 
@@ -2391,16 +2566,20 @@
           if (passwordPromptMode && missionReply) {
             showMissionAlert(missionReply);
             setFeedback("");
+            resetTurnstile();
             return;
           }
           if (passwordPromptMode) {
             setFeedback(passwordPromptMessage);
+            resetTurnstile();
             return;
           }
           setFeedback("MSG sent");
+          resetTurnstile();
         } catch (error) {
           console.error("Supabase drop failed:", error);
           setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
+          resetTurnstile();
         } finally {
           isSending = false;
           panel.classList.remove("is-sending");
@@ -2408,5 +2587,6 @@
         }
       });
     </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=onTurnstileLoaded" async defer></script>
   </body>
 </html>
