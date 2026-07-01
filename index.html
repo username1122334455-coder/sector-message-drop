@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="referrer" content="no-referrer" />
     <title>Sector Message Drop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1850,6 +1852,11 @@
       let isVerified = false;
       let turnstileToken = "";
       let turnstileWidgetId = null;
+      let hasRecordedVerifiedVisit = false;
+      let hasStartedVerifiedPresence = false;
+
+      const isLikelyAutomatedClient = /bot|crawler|spider|slurp|bingpreview|headless|lighthouse|pagespeed|facebookexternalhit|preview|validator|monitoring|uptime/i
+        .test(navigator.userAgent || "");
 
       const isConfigured =
         SUPABASE_URL.startsWith("https://") &&
@@ -1872,6 +1879,18 @@
         missionGrid.setAttribute("aria-hidden", String(!isVerified));
         setVerificationStatus(isVerified ? "Verified." : "Verification required.");
         updateDropWindowState();
+
+        if (isVerified && !isLocalPreview && !isLikelyAutomatedClient) {
+          if (!hasRecordedVerifiedVisit) {
+            hasRecordedVerifiedVisit = true;
+            recordVisit();
+          }
+
+          if (!hasStartedVerifiedPresence) {
+            hasStartedVerifiedPresence = true;
+            initPresence();
+          }
+        }
       };
 
       const resetTurnstile = () => {
@@ -2500,10 +2519,6 @@
       showBulletinPhoto(0);
       startBulletinSlideshow();
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
-      if (!isLocalPreview) {
-        recordVisit();
-        initPresence();
-      }
       scheduleTerminalLog();
       updateCaret();
       renderTurnstile();
