@@ -1526,6 +1526,73 @@
         min-height: 65px;
       }
 
+      .visual-challenge {
+        display: grid;
+        gap: 10px;
+      }
+
+      .visual-challenge__prompt {
+        margin: 0;
+        color: #173d43;
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+
+      .visual-challenge__choices {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .visual-challenge__choice {
+        display: grid;
+        min-width: 0;
+        min-height: 76px;
+        place-items: center;
+        padding: 6px;
+        border: 2px solid #184c52;
+        border-radius: 4px;
+        background: rgba(255, 253, 242, 0.9);
+        box-shadow: 0 3px 0 rgba(24, 76, 82, 0.3);
+        cursor: pointer;
+      }
+
+      .visual-challenge__choice:hover,
+      .visual-challenge__choice:focus-visible {
+        background: #fff2b8;
+        transform: translateY(-1px);
+      }
+
+      .visual-challenge__choice:active {
+        box-shadow: 0 1px 0 rgba(24, 76, 82, 0.3);
+        transform: translateY(2px);
+      }
+
+      .visual-challenge__choice.is-correct {
+        border-color: #287d65;
+        background: #ccefd8;
+      }
+
+      .visual-challenge__choice.is-wrong {
+        border-color: #b34c4c;
+        background: #ffd9cf;
+      }
+
+      .visual-challenge__choice canvas {
+        display: block;
+        width: 58px;
+        height: 58px;
+      }
+
+      .visual-challenge__refresh {
+        width: 42px;
+        height: 42px;
+        justify-self: end;
+        padding: 0;
+        font-size: 1.35rem;
+        line-height: 1;
+      }
+
       .console:not(.is-verified) .mission-grid {
         display: none;
         pointer-events: none;
@@ -1659,8 +1726,14 @@
       body.theme-night .verification-gate h2,
       body.theme-night .verification-gate__eyebrow,
       body.theme-night .verification-gate__copy,
-      body.theme-night .verification-gate__status {
+      body.theme-night .verification-gate__status,
+      body.theme-night .visual-challenge__prompt {
         color: #dcece8;
+      }
+
+      body.theme-night .visual-challenge__choice {
+        border-color: #071014;
+        background: #dcece8;
       }
 
       @media (max-width: 520px) {
@@ -1690,7 +1763,12 @@
       <section class="verification-gate" id="verificationGate" aria-label="Bot verification">
         <p class="verification-gate__eyebrow">Verification required</p>
         <h2>Confirm access</h2>
-        <p class="verification-gate__copy">Complete the check to use this page.</p>
+        <p class="verification-gate__copy">Complete both checks to use this page.</p>
+        <div class="visual-challenge" id="visualChallenge">
+          <p class="visual-challenge__prompt" id="visualChallengePrompt">Loading picture puzzle...</p>
+          <div class="visual-challenge__choices" id="visualChallengeChoices" role="group" aria-label="Picture puzzle choices"></div>
+          <button class="visual-challenge__refresh" id="visualChallengeRefresh" type="button" aria-label="Load a new picture puzzle" title="New puzzle">↻</button>
+        </div>
         <div class="turnstile-widget" id="turnstileWidget"></div>
         <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
       </section>
@@ -1796,6 +1874,9 @@
       const verificationGate = document.querySelector("#verificationGate");
       const turnstileWidget = document.querySelector("#turnstileWidget");
       const verificationStatus = document.querySelector("#verificationStatus");
+      const visualChallengePrompt = document.querySelector("#visualChallengePrompt");
+      const visualChallengeChoices = document.querySelector("#visualChallengeChoices");
+      const visualChallengeRefresh = document.querySelector("#visualChallengeRefresh");
       const privateMessageLink = document.querySelector("#privateMessageLink");
       const bulletinGallery = document.querySelector("[data-bulletin-gallery]");
       const bulletinPhotos = [...document.querySelectorAll(".bulletin-board__photo")];
@@ -1816,10 +1897,10 @@
       const TURNSTILE_SITE_KEY = "0x4AAAAAADuDuKqLvbYdHvR1";
       const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
       const isTurnstileConfigured = TURNSTILE_SITE_KEY !== "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
-      const turnstileSiteKey = isTurnstileConfigured
-        ? TURNSTILE_SITE_KEY
-        : isLocalPreview
-          ? TURNSTILE_TEST_SITE_KEY
+      const turnstileSiteKey = isLocalPreview
+        ? TURNSTILE_TEST_SITE_KEY
+        : isTurnstileConfigured
+          ? TURNSTILE_SITE_KEY
           : "";
       const responseCooldownMs = 3500;
       const keywordReplies = [
@@ -1852,6 +1933,8 @@
       let isVerified = false;
       let turnstileToken = "";
       let turnstileWidgetId = null;
+      let visualChallengeSolved = false;
+      let visualChallengeTimer = null;
       let hasRecordedVerifiedVisit = false;
       let hasStartedVerifiedPresence = false;
 
@@ -1871,13 +1954,81 @@
         verificationStatus.dataset.type = type;
       };
 
-      const setVerifiedAccess = (token) => {
-        turnstileToken = token || "";
-        isVerified = Boolean(turnstileToken);
+      const visualPuzzleShapes = [
+        { id: "circle", label: "circle" },
+        { id: "triangle", label: "triangle" },
+        { id: "diamond", label: "diamond" },
+        { id: "star", label: "star" },
+      ];
+
+      const shuffleVisualPuzzle = (items) => {
+        const shuffled = [...items];
+        for (let index = shuffled.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+        }
+        return shuffled;
+      };
+
+      const drawVisualPuzzleShape = (canvas, shape, color) => {
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        const size = 72;
+        canvas.width = size * pixelRatio;
+        canvas.height = size * pixelRatio;
+        const context = canvas.getContext("2d");
+        context.scale(pixelRatio, pixelRatio);
+        context.clearRect(0, 0, size, size);
+        context.fillStyle = color;
+        context.strokeStyle = "#173d43";
+        context.lineWidth = 3;
+        context.lineJoin = "round";
+        context.beginPath();
+
+        if (shape === "circle") {
+          context.arc(36, 36, 22, 0, Math.PI * 2);
+        } else if (shape === "triangle") {
+          context.moveTo(36, 10);
+          context.lineTo(62, 58);
+          context.lineTo(10, 58);
+          context.closePath();
+        } else if (shape === "diamond") {
+          context.moveTo(36, 8);
+          context.lineTo(64, 36);
+          context.lineTo(36, 64);
+          context.lineTo(8, 36);
+          context.closePath();
+        } else {
+          for (let point = 0; point < 10; point += 1) {
+            const radius = point % 2 === 0 ? 27 : 12;
+            const angle = -Math.PI / 2 + point * Math.PI / 5;
+            const x = 36 + Math.cos(angle) * radius;
+            const y = 36 + Math.sin(angle) * radius;
+            if (point === 0) context.moveTo(x, y);
+            else context.lineTo(x, y);
+          }
+          context.closePath();
+        }
+
+        context.fill();
+        context.stroke();
+      };
+
+      const updateVerifiedAccess = () => {
+        isVerified = Boolean(turnstileToken) && visualChallengeSolved;
         consoleShell.classList.toggle("is-verified", isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
         missionGrid.setAttribute("aria-hidden", String(!isVerified));
-        setVerificationStatus(isVerified ? "Verified." : "Verification required.");
+
+        if (isVerified) {
+          setVerificationStatus("Verified.");
+        } else if (turnstileToken) {
+          setVerificationStatus("Cloud check passed. Solve the picture puzzle.");
+        } else if (visualChallengeSolved) {
+          setVerificationStatus("Picture puzzle passed. Completing cloud check...");
+        } else {
+          setVerificationStatus("Solve the picture puzzle while the cloud check runs.");
+        }
+
         updateDropWindowState();
 
         if (isVerified && !isLocalPreview && !isLikelyAutomatedClient) {
@@ -1893,16 +2044,64 @@
         }
       };
 
+      const renderVisualChallenge = () => {
+        if (!visualChallengePrompt || !visualChallengeChoices) return;
+        if (visualChallengeTimer) clearTimeout(visualChallengeTimer);
+
+        visualChallengeSolved = false;
+        const target = visualPuzzleShapes[Math.floor(Math.random() * visualPuzzleShapes.length)];
+        const colors = shuffleVisualPuzzle(["#ff8a73", "#f4c95d", "#65b6ab", "#8bc8e8"]);
+        const choices = shuffleVisualPuzzle(visualPuzzleShapes);
+        visualChallengePrompt.textContent = `Select the ${target.label.toUpperCase()} symbol.`;
+        visualChallengeChoices.replaceChildren();
+
+        choices.forEach((choice, index) => {
+          const button = document.createElement("button");
+          button.className = "visual-challenge__choice";
+          button.type = "button";
+          button.setAttribute("aria-label", `Picture choice ${index + 1}`);
+          const canvas = document.createElement("canvas");
+          canvas.setAttribute("aria-hidden", "true");
+          drawVisualPuzzleShape(canvas, choice.id, colors[index]);
+          button.append(canvas);
+
+          button.addEventListener("click", () => {
+            const buttons = visualChallengeChoices.querySelectorAll("button");
+            buttons.forEach((item) => { item.disabled = true; });
+
+            if (choice.id === target.id) {
+              visualChallengeSolved = true;
+              button.classList.add("is-correct");
+              updateVerifiedAccess();
+              return;
+            }
+
+            button.classList.add("is-wrong");
+            setVerificationStatus("Not a match. Loading a new puzzle.", "error");
+            visualChallengeTimer = setTimeout(() => {
+              renderVisualChallenge();
+              updateVerifiedAccess();
+            }, 650);
+          });
+
+          visualChallengeChoices.append(button);
+        });
+
+        updateVerifiedAccess();
+      };
+
+      const setVerifiedAccess = (token) => {
+        turnstileToken = token || "";
+        updateVerifiedAccess();
+      };
+
       const resetTurnstile = () => {
         turnstileToken = "";
-        isVerified = false;
-        consoleShell.classList.remove("is-verified");
-        verificationGate.setAttribute("aria-hidden", "false");
-        missionGrid.setAttribute("aria-hidden", "true");
+        renderVisualChallenge();
         if (window.turnstile && turnstileWidgetId !== null) {
           window.turnstile.reset(turnstileWidgetId);
         }
-        updateDropWindowState();
+        updateVerifiedAccess();
       };
 
       const renderTurnstile = () => {
@@ -1933,6 +2132,11 @@
       };
 
       window.onTurnstileLoaded = renderTurnstile;
+
+      visualChallengeRefresh?.addEventListener("click", () => {
+        renderVisualChallenge();
+        setVerificationStatus("New picture puzzle loaded.");
+      });
 
       const submitDrop = async (message) => {
         const payload = {
@@ -2521,6 +2725,7 @@
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       scheduleTerminalLog();
       updateCaret();
+      renderVisualChallenge();
       renderTurnstile();
 
       form.addEventListener("submit", async (event) => {
