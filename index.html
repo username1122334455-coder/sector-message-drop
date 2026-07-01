@@ -1525,10 +1525,9 @@
       }
 
       .console:not(.is-verified) .mission-grid {
+        display: none;
         pointer-events: none;
         user-select: none;
-        filter: saturate(0.72) blur(1px);
-        opacity: 0.45;
       }
 
       .console.is-verified .verification-gate {
@@ -1693,7 +1692,7 @@
         <div class="turnstile-widget" id="turnstileWidget"></div>
         <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
       </section>
-      <section class="mission-grid">
+      <section class="mission-grid" aria-hidden="true">
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
@@ -1780,6 +1779,7 @@
       const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
 
       const form = document.querySelector("#messageForm");
+      const missionGrid = document.querySelector(".mission-grid");
       const input = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
       const feedback = document.querySelector("#feedback");
@@ -1869,6 +1869,7 @@
         isVerified = Boolean(turnstileToken);
         consoleShell.classList.toggle("is-verified", isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
+        missionGrid.setAttribute("aria-hidden", String(!isVerified));
         setVerificationStatus(isVerified ? "Verified." : "Verification required.");
         updateDropWindowState();
       };
@@ -1878,6 +1879,7 @@
         isVerified = false;
         consoleShell.classList.remove("is-verified");
         verificationGate.setAttribute("aria-hidden", "false");
+        missionGrid.setAttribute("aria-hidden", "true");
         if (window.turnstile && turnstileWidgetId !== null) {
           window.turnstile.reset(turnstileWidgetId);
         }
