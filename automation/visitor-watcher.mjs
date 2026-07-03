@@ -82,20 +82,32 @@ const folderStatus = async (number) => {
 };
 
 const latestVisit = async () => {
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/latest_site_visit_marker`, {
-    method: "POST",
-    headers: {
-      apikey: publishableKey,
-      "Content-Type": "application/json",
-    },
-    body: "{}",
-  });
+  let lastError;
 
-  if (!response.ok) {
-    throw new Error(`visit RPC returned ${response.status}`);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/latest_site_visit_marker`, {
+        method: "POST",
+        headers: {
+          apikey: publishableKey,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+        signal: AbortSignal.timeout(8_000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`visit RPC returned ${response.status}`);
+      }
+
+      return (await response.json()) || null;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await sleep(attempt * 1_000);
+    }
   }
 
-  return (await response.json()) || null;
+  throw new Error(`visit RPC unavailable after 3 attempts: ${lastError?.message || "unknown error"}`);
 };
 
 for (const number of await availableFolders()) {
