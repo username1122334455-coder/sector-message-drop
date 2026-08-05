@@ -1593,12 +1593,6 @@
         line-height: 1;
       }
 
-      .console:not(.is-verified) .mission-grid {
-        display: none;
-        pointer-events: none;
-        user-select: none;
-      }
-
       .console.is-verified .verification-gate {
         display: none;
       }
@@ -1763,7 +1757,7 @@
       <section class="verification-gate" id="verificationGate" aria-label="Bot verification">
         <p class="verification-gate__eyebrow">Verification required</p>
         <h2>Confirm access</h2>
-        <p class="verification-gate__copy">Complete both checks to use this page.</p>
+        <p class="verification-gate__copy">Complete both checks before sending a message or saving a calculation. You can use the rest of the page normally.</p>
         <div class="visual-challenge" id="visualChallenge">
           <p class="visual-challenge__prompt" id="visualChallengePrompt">Loading picture puzzle...</p>
           <div class="visual-challenge__choices" id="visualChallengeChoices" role="group" aria-label="Picture puzzle choices"></div>
@@ -1772,7 +1766,7 @@
         <div class="turnstile-widget" id="turnstileWidget"></div>
         <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
       </section>
-      <section class="mission-grid" aria-hidden="true">
+      <section class="mission-grid" aria-hidden="false">
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
@@ -2017,7 +2011,7 @@
         isVerified = Boolean(turnstileToken) && visualChallengeSolved;
         consoleShell.classList.toggle("is-verified", isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
-        missionGrid.setAttribute("aria-hidden", String(!isVerified));
+        missionGrid.setAttribute("aria-hidden", "false");
 
         if (isVerified) {
           setVerificationStatus("Verified.");
@@ -2121,6 +2115,7 @@
 
         turnstileWidgetId = window.turnstile.render(turnstileWidget, {
           sitekey: turnstileSiteKey,
+          action: "turnstile-spin-v2",
           theme: "auto",
           callback: (token) => setVerifiedAccess(token),
           "expired-callback": () => resetTurnstile(),
