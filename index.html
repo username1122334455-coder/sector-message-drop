@@ -1890,6 +1890,8 @@
         : null;
       const TURNSTILE_SITE_KEY = "0x4AAAAAADuDuKqLvbYdHvR1";
       const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
+      // Temporary operational switch. Set to true to restore bot verification.
+      const BOT_VERIFICATION_ENABLED = false;
       const isTurnstileConfigured = TURNSTILE_SITE_KEY !== "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
       const turnstileSiteKey = isLocalPreview
         ? TURNSTILE_TEST_SITE_KEY
@@ -2008,7 +2010,7 @@
       };
 
       const updateVerifiedAccess = () => {
-        isVerified = Boolean(turnstileToken) && visualChallengeSolved;
+        isVerified = !BOT_VERIFICATION_ENABLED || (Boolean(turnstileToken) && visualChallengeSolved);
         consoleShell.classList.toggle("is-verified", isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
         missionGrid.setAttribute("aria-hidden", "false");
@@ -2090,6 +2092,11 @@
       };
 
       const resetTurnstile = () => {
+        if (!BOT_VERIFICATION_ENABLED) {
+          updateVerifiedAccess();
+          return;
+        }
+
         turnstileToken = "";
         renderVisualChallenge();
         if (window.turnstile && turnstileWidgetId !== null) {
@@ -2099,6 +2106,11 @@
       };
 
       const renderTurnstile = () => {
+        if (!BOT_VERIFICATION_ENABLED) {
+          updateVerifiedAccess();
+          return;
+        }
+
         if (!turnstileWidget) return;
 
         if (!turnstileSiteKey) {
@@ -2140,7 +2152,7 @@
           turnstileToken,
         };
 
-        if (!isLocalPreview) {
+        if (BOT_VERIFICATION_ENABLED && !isLocalPreview) {
           return client.functions.invoke("submit-drop-verified", { body: payload });
         }
 
@@ -2628,7 +2640,7 @@
       keypadSubmit.addEventListener("click", async () => {
         const expression = keypadDisplay.dataset.expression || "";
 
-        if (!isVerified || !turnstileToken) {
+        if (BOT_VERIFICATION_ENABLED && (!isVerified || !turnstileToken)) {
           setKeypadStatus("Complete verification first.", "is-error");
           renderTurnstile();
           return;
@@ -2720,8 +2732,12 @@
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       scheduleTerminalLog();
       updateCaret();
-      renderVisualChallenge();
-      renderTurnstile();
+      if (BOT_VERIFICATION_ENABLED) {
+        renderVisualChallenge();
+        renderTurnstile();
+      } else {
+        updateVerifiedAccess();
+      }
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -2732,7 +2748,7 @@
         const value = input.value.trim();
         const issue = validate(value);
 
-        if (!isVerified || !turnstileToken) {
+        if (BOT_VERIFICATION_ENABLED && (!isVerified || !turnstileToken)) {
           setFeedback("Complete verification first.", "is-error");
           renderTurnstile();
           return;
