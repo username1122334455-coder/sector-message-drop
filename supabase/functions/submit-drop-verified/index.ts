@@ -33,7 +33,8 @@ serve(async (request) => {
     return json({ ok: false, message: "Method not allowed." }, 405);
   }
 
-  const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  const turnstileSecret =
+    Deno.env.get("TURNSTILE_SECRET") || Deno.env.get("TURNSTILE_SECRET_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -62,18 +63,34 @@ serve(async (request) => {
     return json({ ok: false, message: "Verification required." }, 400);
   }
 
-  const verificationBody = new FormData();
-  verificationBody.append("secret", turnstileSecret);
-  verificationBody.append("response", turnstileToken);
+  const verificationBody = new URLSearchParams({
+    secret: turnstileSecret,
+    response: turnstileToken,
+  });
   if (ipAddress) {
-    verificationBody.append("remoteip", ipAddress);
+    verificationBody.set("remoteip", ipAddress);
   }
 
-  const verificationResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: verificationBody,
-  });
-  const verificationResult = await verificationResponse.json();
+  let verificationResult: Record<string, unknown>;
+  try {
+    const verificationResponse = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: verificationBody,
+      },
+    );
+
+    if (!verificationResponse.ok) {
+      throw new Error(`siteverify returned ${verificationResponse.status}`);
+    }
+
+    verificationResult = await verificationResponse.json();
+  } catch (error) {
+    console.error("siteverify failed", error);
+    return json({ ok: false, message: "Verification unavailable." }, 403);
+  }
 
   if (!verificationResult.success) {
     return json(
