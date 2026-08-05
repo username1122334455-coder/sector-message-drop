@@ -82,6 +82,7 @@ $function$;
 
 -- Submissions are routed through the submit-drop-verified Edge Function.
 -- Keep direct browser RPC calls closed after bot verification is enabled.
+revoke execute on function public.submit_drop(text, uuid) from public;
 revoke execute on function public.submit_drop(text, uuid) from anon;
 revoke execute on function public.submit_drop(text, uuid) from authenticated;
 grant execute on function public.submit_drop(text, uuid) to service_role;
