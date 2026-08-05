@@ -1,15 +1,28 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const updateRoot = "/Users/dongol/Library/Application Support/SectorMessageDrop/BulletinUpdate";
-const statePath = "/Users/dongol/Library/Application Support/SectorMessageDrop/visitor-watcher-state.json";
-const publisher = "/Users/dongol/Documents/Codex/2026-05-16/make-me-a-modern-website-for/automation/publish-bulletin.mjs";
+const automationDir = path.dirname(fileURLToPath(import.meta.url));
+const updateRoot = path.join(
+  homedir(),
+  "Documents",
+  "DropMMSSGG Website Updates",
+);
+const statePath = path.join(
+  homedir(),
+  "Library",
+  "Application Support",
+  "SectorMessageDrop",
+  "visitor-watcher-state.json",
+);
+const publisher = path.join(automationDir, "publish-bulletin.mjs");
 const supabaseUrl = "https://hrsrjfpygekjyuwibsia.supabase.co";
 const publishableKey = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
 const pollMs = 10_000;
-const rotationFolders = [1, 2, 3, 4, 5];
+const rotationFolders = [1, 2, 3];
 
 const log = (message) => console.log(`${new Date().toISOString()} ${message}`);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,7 +38,7 @@ const isNewerVisit = (marker, baseline) => {
 };
 
 const folderPath = (number) => {
-  const currentName = path.join(updateRoot, `${number}FOLDER`);
+  const currentName = path.join(updateRoot, `Folder${number}`);
   const legacyName = path.join(updateRoot, `FOLDER${number}`);
   return existsSync(currentName) ? currentName : legacyName;
 };
@@ -123,9 +136,9 @@ try {
   state = {};
 }
 
-if (state.version !== 2) {
+if (state.version !== 3) {
   state = {
-    version: 2,
+    version: 3,
     currentFolder: 1,
     lastProcessedVisit: await latestVisit(),
   };

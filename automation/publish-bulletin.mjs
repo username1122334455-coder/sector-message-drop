@@ -1,10 +1,19 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { copyFile, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = "/Users/dongol/Documents/Codex/2026-05-16/make-me-a-modern-website-for";
-const defaultUpdateDir = "/Users/dongol/Desktop/BulletinUpdate";
+const automationDir = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(automationDir, "..");
+const defaultUpdateDir = path.join(
+  homedir(),
+  "Documents",
+  "DropMMSSGG Website Updates",
+  "Folder1",
+);
 const sourceIndex = process.argv.indexOf("--source");
 const updateDir = sourceIndex >= 0
   ? path.resolve(process.argv[sourceIndex + 1] || "")
@@ -15,11 +24,20 @@ const imageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 const mediaExtensions = new Set([...imageExtensions, ".pdf"]);
 const clickHereUrl = "https://www.jessikaprivateprofile.com";
 const automationRemote = "git@github.com:username1122334455-coder/sector-message-drop.git";
-const deployKey = "/Users/dongol/Library/Application Support/SectorMessageDrop/git/github-deploy-key";
-const pushEnvironment = {
-  ...process.env,
-  GIT_SSH_COMMAND: `/usr/bin/ssh -i "${deployKey}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new`,
-};
+const deployKey = path.join(
+  homedir(),
+  "Library",
+  "Application Support",
+  "SectorMessageDrop",
+  "git",
+  "github-deploy-key",
+);
+const pushEnvironment = existsSync(deployKey)
+  ? {
+      ...process.env,
+      GIT_SSH_COMMAND: `/usr/bin/ssh -i "${deployKey}" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new`,
+    }
+  : process.env;
 const transparentPixelPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
   "base64",
@@ -170,8 +188,22 @@ if (process.argv.includes("--check")) {
   process.exit(0);
 }
 
-// Verify unattended GitHub authentication before touching the live workspace.
-// This prevents a failed push from leaving local bulletin files or commits ahead.
+const protectedWorkspaceChanges = run("/usr/bin/git", [
+  "status",
+  "--porcelain",
+  "--",
+  "index.html",
+  "assets",
+]);
+if (protectedWorkspaceChanges) {
+  throw new Error("index.html or assets has uncommitted changes; publish cancelled");
+}
+
+// Confirm authentication and fast-forward before touching the live workspace.
+run("/usr/bin/git", ["fetch", automationRemote, "main"], {
+  env: pushEnvironment,
+});
+run("/usr/bin/git", ["merge", "--ff-only", "FETCH_HEAD"]);
 run("/usr/bin/git", ["push", "--dry-run", automationRemote, "main"], {
   env: pushEnvironment,
 });
@@ -231,7 +263,7 @@ html = html.replace(
 );
 await writeFile(indexPath, html, "utf8");
 
-run("/Applications/Codex.app/Contents/Resources/cua_node/bin/node", [
+run(process.execPath, [
   "-e",
   `const fs=require("fs");const h=fs.readFileSync(${JSON.stringify(indexPath)},"utf8");for(const m of h.matchAll(/<script[^>]*>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].includes("cdn.jsdelivr"))new Function(m[1]);}`,
 ]);
