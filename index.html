@@ -1890,8 +1890,7 @@
         : null;
       const TURNSTILE_SITE_KEY = "0x4AAAAAADuDuKqLvbYdHvR1";
       const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
-      // Temporary operational switch. Set to true to restore bot verification.
-      const BOT_VERIFICATION_ENABLED = false;
+      const BOT_VERIFICATION_ENABLED = true;
       const isTurnstileConfigured = TURNSTILE_SITE_KEY !== "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
       const turnstileSiteKey = isLocalPreview
         ? TURNSTILE_TEST_SITE_KEY
