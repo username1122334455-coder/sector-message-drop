@@ -172,7 +172,7 @@ while (true) {
       log(`new visitor detected; publishing ${status.empty ? "empty state from" : ""} FOLDER${nextFolder}`);
 
       const result = spawnSync(
-        "/Applications/Codex.app/Contents/Resources/cua_node/bin/node",
+        process.execPath,
         [publisher, "--source", folderPath(nextFolder)],
         { encoding: "utf8" },
       );
@@ -180,7 +180,12 @@ while (true) {
       if (result.status !== 0) {
         failedVisitMarker = marker;
         retryAfter = Date.now() + 60_000;
-        throw new Error(result.stderr || result.stdout || "publisher failed");
+        throw new Error(
+          result.error?.message ||
+          result.stderr?.trim() ||
+          result.stdout?.trim() ||
+          `publisher exited with status ${result.status}`,
+        );
       }
 
       failedVisitMarker = null;
