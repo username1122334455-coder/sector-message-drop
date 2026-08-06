@@ -204,7 +204,7 @@ run("/usr/bin/git", ["fetch", automationRemote, "main"], {
   env: pushEnvironment,
 });
 run("/usr/bin/git", ["merge", "--ff-only", "FETCH_HEAD"]);
-run("/usr/bin/git", ["push", "--dry-run", automationRemote, "main"], {
+run("/usr/bin/git", ["push", "--dry-run", automationRemote, "HEAD:main"], {
   env: pushEnvironment,
 });
 
@@ -279,7 +279,7 @@ if (staged) {
 
 // Always push. A previous run may have committed successfully but lost its
 // network or credential connection before the push completed.
-run("/usr/bin/git", ["push", automationRemote, "main"], {
+run("/usr/bin/git", ["push", automationRemote, "HEAD:main"], {
   env: pushEnvironment,
 });
 
