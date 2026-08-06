@@ -86,7 +86,9 @@ begin
 end;
 $function$;
 
-revoke all on function public.record_visit(uuid, text, text, text, text, text, text) from public;
-grant execute on function public.record_visit(uuid, text, text, text, text, text, text) to anon, authenticated;
+revoke execute on function public.record_visit(uuid, text, text, text, text, text, text) from public;
+revoke execute on function public.record_visit(uuid, text, text, text, text, text, text) from anon;
+revoke execute on function public.record_visit(uuid, text, text, text, text, text, text) from authenticated;
+grant execute on function public.record_visit(uuid, text, text, text, text, text, text) to service_role;
 
 notify pgrst, 'reload schema';

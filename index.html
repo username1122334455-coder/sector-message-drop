@@ -6,6 +6,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
     <meta name="referrer" content="no-referrer" />
     <title>Sector Message Drop</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -1863,7 +1864,7 @@
       </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
     <script>
       const SUPABASE_URL = "https://hrsrjfpygekjyuwibsia.supabase.co";
       const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
@@ -1887,7 +1888,6 @@
       const visualChallengePrompt = document.querySelector("#visualChallengePrompt");
       const visualChallengeChoices = document.querySelector("#visualChallengeChoices");
       const visualChallengeRefresh = document.querySelector("#visualChallengeRefresh");
-      const privateMessageLink = document.querySelector("#privateMessageLink");
       const bulletinGallery = document.querySelector("[data-bulletin-gallery]");
       const bulletinPhotos = [...document.querySelectorAll(".bulletin-board__photo")];
       const bulletinPrevious = document.querySelector("[data-bulletin-prev]");
@@ -1946,7 +1946,11 @@
       let turnstileWidgetId = null;
       let visualChallengeSolved = false;
       let visualChallengeTimer = null;
-      let hasRecordedVerifiedVisit = false;
+      let verificationProof = "";
+      let verificationExpiresAt = 0;
+      let verificationExpiryTimer = null;
+      let verificationAttemptId = crypto.randomUUID();
+      let isVerificationPending = false;
       let hasStartedVerifiedPresence = false;
 
       const isLikelyAutomatedClient = /bot|crawler|spider|slurp|bingpreview|headless|lighthouse|pagespeed|facebookexternalhit|preview|validator|monitoring|uptime/i
@@ -2025,7 +2029,11 @@
       };
 
       const updateVerifiedAccess = () => {
-        isVerified = !BOT_VERIFICATION_ENABLED || (Boolean(turnstileToken) && visualChallengeSolved);
+        const localPreviewIsVerified = Boolean(turnstileToken) && visualChallengeSolved;
+        const serverSessionIsVerified = Boolean(verificationProof) && verificationExpiresAt > Date.now();
+        isVerified = !BOT_VERIFICATION_ENABLED || (
+          isLocalPreview ? localPreviewIsVerified : serverSessionIsVerified
+        );
         consoleShell.classList.toggle("is-verified", isVerified);
         document.body.classList.toggle("verification-locked", !isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
@@ -2034,6 +2042,8 @@
 
         if (isVerified) {
           setVerificationStatus("Verified.");
+        } else if (isVerificationPending) {
+          setVerificationStatus("Completing secure verification...");
         } else if (turnstileToken) {
           setVerificationStatus("Cloud check passed. Solve the picture puzzle.");
         } else if (visualChallengeSolved) {
@@ -2045,11 +2055,6 @@
         updateDropWindowState();
 
         if (isVerified && !isLocalPreview && !isLikelyAutomatedClient) {
-          if (!hasRecordedVerifiedVisit) {
-            hasRecordedVerifiedVisit = true;
-            recordVisit();
-          }
-
           if (!hasStartedVerifiedPresence) {
             hasStartedVerifiedPresence = true;
             initPresence();
@@ -2086,6 +2091,7 @@
               visualChallengeSolved = true;
               button.classList.add("is-correct");
               updateVerifiedAccess();
+              void completeVerification();
               return;
             }
 
@@ -2103,23 +2109,104 @@
         updateVerifiedAccess();
       };
 
-      const setVerifiedAccess = (token) => {
-        turnstileToken = token || "";
-        updateVerifiedAccess();
+      const removeTurnstileWidget = () => {
+        if (window.turnstile && turnstileWidgetId !== null) {
+          window.turnstile.remove(turnstileWidgetId);
+          turnstileWidgetId = null;
+        }
       };
 
-      const resetTurnstile = () => {
+      const resetVerification = (message = "") => {
         if (!BOT_VERIFICATION_ENABLED) {
           updateVerifiedAccess();
           return;
         }
 
+        if (verificationExpiryTimer) clearTimeout(verificationExpiryTimer);
+        verificationExpiryTimer = null;
+        verificationProof = "";
+        verificationExpiresAt = 0;
+        verificationAttemptId = crypto.randomUUID();
+        isVerificationPending = false;
         turnstileToken = "";
         renderVisualChallenge();
+
         if (window.turnstile && turnstileWidgetId !== null) {
           window.turnstile.reset(turnstileWidgetId);
+        } else {
+          renderTurnstile();
         }
+
         updateVerifiedAccess();
+        if (message) setVerificationStatus(message, "error");
+      };
+
+      const completeVerification = async () => {
+        if (!BOT_VERIFICATION_ENABLED || isVerified || isVerificationPending) return;
+        if (!turnstileToken || !visualChallengeSolved) return;
+
+        if (isLocalPreview) {
+          updateVerifiedAccess();
+          return;
+        }
+
+        if (!client) {
+          setVerificationStatus("Verification service is not configured.", "error");
+          return;
+        }
+
+        isVerificationPending = true;
+        updateVerifiedAccess();
+
+        try {
+          const metadata = getVisitorMetadata();
+          const { data, error } = await withTimeout(
+            client.functions.invoke("submit-drop-verified", {
+              body: {
+                mode: "verify",
+                clientId: getClientId(),
+                turnstileToken,
+                verificationAttemptId,
+                path: window.location.pathname || "/",
+                userAgent: metadata.p_user_agent,
+                timezone: metadata.p_timezone,
+                screenSize: metadata.p_screen_size,
+                platform: metadata.p_platform,
+                referrer: metadata.p_referrer,
+              },
+            }),
+            12_000,
+          );
+
+          if (error) throw error;
+          const expiresAt = Date.parse(data?.expiresAt || "");
+          if (!data?.ok || !data?.verificationProof || !Number.isFinite(expiresAt)) {
+            throw new Error(data?.message || "Verification failed.");
+          }
+
+          verificationProof = data.verificationProof;
+          verificationExpiresAt = expiresAt;
+          turnstileToken = "";
+          removeTurnstileWidget();
+
+          const expiresIn = Math.max(verificationExpiresAt - Date.now(), 1000);
+          verificationExpiryTimer = setTimeout(() => {
+            resetVerification("Verification expired. Complete both checks again.");
+          }, expiresIn);
+        } catch (error) {
+          console.error("Server verification failed:", error);
+          resetVerification();
+          setVerificationStatus("Verification failed. Try again.", "error");
+        } finally {
+          isVerificationPending = false;
+          updateVerifiedAccess();
+        }
+      };
+
+      const setTurnstileToken = (token) => {
+        turnstileToken = token || "";
+        updateVerifiedAccess();
+        void completeVerification();
       };
 
       const renderTurnstile = () => {
@@ -2146,11 +2233,12 @@
           sitekey: turnstileSiteKey,
           action: "turnstile-spin-v2",
           theme: "auto",
-          callback: (token) => setVerifiedAccess(token),
-          "expired-callback": () => resetTurnstile(),
+          callback: (token) => setTurnstileToken(token),
+          "expired-callback": () => {
+            if (!verificationProof) resetVerification("Verification expired. Try again.");
+          },
           "error-callback": () => {
-            resetTurnstile();
-            setVerificationStatus("Verification failed. Try again.", "error");
+            if (!verificationProof) resetVerification("Verification failed. Try again.");
           },
         });
       };
@@ -2164,13 +2252,18 @@
 
       const submitDrop = async (message) => {
         const payload = {
+          mode: "submit",
           message,
           clientId: getClientId(),
-          turnstileToken,
+          verificationProof,
         };
 
         if (BOT_VERIFICATION_ENABLED && !isLocalPreview) {
           return client.functions.invoke("submit-drop-verified", { body: payload });
+        }
+
+        if (isLocalPreview) {
+          return { data: { ok: true, preview: true }, error: null };
         }
 
         return client.rpc("submit_drop", {
@@ -2353,46 +2446,6 @@
           p_platform: navigator.userAgentData?.platform || navigator.platform || "",
           p_referrer: document.referrer || "",
         };
-      };
-
-      const callRecordVisitRpc = async (path, includeMetadata = true) => {
-        const payload = {
-          p_client_id: getClientId(),
-          p_path: path,
-        };
-
-        if (includeMetadata) {
-          Object.assign(payload, getVisitorMetadata());
-        }
-
-        const { error } = await client.rpc("record_visit", payload);
-        if (error) throw error;
-      };
-
-      const recordVisitPath = async (path) => {
-        if (!client) return;
-
-        try {
-          await callRecordVisitRpc(path, true);
-        } catch {
-          try {
-            await callRecordVisitRpc(path, false);
-          } catch {
-            // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
-          }
-        }
-      };
-
-      const recordVisit = async () => {
-        try {
-          await recordVisitPath(window.location.pathname || "/");
-        } catch {
-          // Analytics is optional; the drop form should keep working if the RPC is not installed yet.
-        }
-      };
-
-      const recordPrivateMessageClick = async () => {
-        await recordVisitPath("click:private-msg");
       };
 
       const setKeypadStatus = (message, type = "") => {
@@ -2613,13 +2666,6 @@
         }
       });
 
-      privateMessageLink?.addEventListener("click", (event) => {
-        event.preventDefault();
-        recordPrivateMessageClick().finally(() => {
-          window.location.href = privateMessageLink.href;
-        });
-      });
-
       bulletinPrevious?.addEventListener("click", () => {
         showBulletinPhoto(bulletinPhotoIndex - 1);
         startBulletinSlideshow();
@@ -2657,7 +2703,7 @@
       keypadSubmit.addEventListener("click", async () => {
         const expression = keypadDisplay.dataset.expression || "";
 
-        if (BOT_VERIFICATION_ENABLED && (!isVerified || !turnstileToken)) {
+        if (BOT_VERIFICATION_ENABLED && !isVerified) {
           setKeypadStatus("Complete verification first.", "is-error");
           renderTurnstile();
           return;
@@ -2694,11 +2740,12 @@
           if (!data?.ok) throw new Error(data?.message || "Calculation storage failed.");
 
           setKeypadStatus("");
-          resetTurnstile();
         } catch (error) {
           console.error("Calculator storage failed:", error);
           setKeypadStatus(`= ${result} · save failed`, "is-error");
-          resetTurnstile();
+          if (!isLocalPreview) {
+            resetVerification("Secure session ended. Complete both checks again.");
+          }
         } finally {
           keypadSubmit.disabled = false;
         }
@@ -2765,7 +2812,7 @@
         const value = input.value.trim();
         const issue = validate(value);
 
-        if (BOT_VERIFICATION_ENABLED && (!isVerified || !turnstileToken)) {
+        if (BOT_VERIFICATION_ENABLED && !isVerified) {
           setFeedback("Complete verification first.", "is-error");
           renderTurnstile();
           return;
@@ -2797,14 +2844,15 @@
           if (error) {
             console.error("Supabase drop failed:", error);
             setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : error.message || "Drop failed. Try again.", "is-error");
-            resetTurnstile();
+            if (!isLocalPreview) {
+              resetVerification("Secure session ended. Complete both checks again.");
+            }
             return;
           }
 
           if (!data?.ok) {
             console.error("Supabase drop rejected:", data);
             setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : data?.message || "Drop failed. Try again.", "is-error");
-            resetTurnstile();
             return;
           }
 
@@ -2816,20 +2864,19 @@
           if (passwordPromptMode && missionReply) {
             showMissionAlert(missionReply);
             setFeedback("");
-            resetTurnstile();
             return;
           }
           if (passwordPromptMode) {
             setFeedback(passwordPromptMessage);
-            resetTurnstile();
             return;
           }
           setFeedback("MSG sent");
-          resetTurnstile();
         } catch (error) {
           console.error("Supabase drop failed:", error);
           setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
-          resetTurnstile();
+          if (!isLocalPreview) {
+            resetVerification("Secure session ended. Complete both checks again.");
+          }
         } finally {
           isSending = false;
           panel.classList.remove("is-sending");

@@ -1,6 +1,6 @@
 # Bot Verification Setup
 
-This project uses Cloudflare Turnstile on the page and a Supabase Edge Function for server-side verification.
+This project uses Cloudflare Turnstile on the page and a Supabase Edge Function for server-side verification. A successful gate check creates a short-lived, server-signed session so the visitor can use the message form without repeating the CAPTCHA after every submission.
 
 ## 1. Create a Turnstile widget
 
@@ -46,12 +46,15 @@ supabase-turnstile-lockdown.sql
 
 in the Supabase SQL Editor.
 
-That makes `submit_drop` callable by the server-side function only, so unverified direct browser RPC calls are rejected.
+That makes `submit_drop` and `record_visit` callable by the server-side function only, so unverified direct browser RPC calls cannot submit messages or trigger visitor rotation.
 
 ## 5. Verify
 
 1. Open the live site.
 2. Confirm the verification panel appears before the message/calculator UI can be used.
-3. Complete the Turnstile check.
-4. Submit a reply.
-5. Confirm the reply lands in `public.drops`.
+3. Complete both checks and confirm the website unlocks.
+4. Confirm one verified visit lands in `public.visits` and advances the next prepared folder.
+5. Submit a reply and confirm it lands in `public.drops` without showing the gate again.
+6. Confirm direct anonymous calls to `submit_drop` and `record_visit` return `401` or `403`.
+
+Local previews use Cloudflare's test widget and never write messages or visits to production.
