@@ -1486,7 +1486,7 @@
       .verification-gate {
         display: grid;
         gap: 12px;
-        margin-bottom: 14px;
+        margin: 0;
         padding: clamp(16px, 4vw, 22px);
         border: 3px solid #184c52;
         border-radius: 6px;
@@ -1594,6 +1594,22 @@
       }
 
       .console.is-verified .verification-gate {
+        display: none;
+      }
+
+      body.verification-locked {
+        display: grid;
+        min-height: 100dvh;
+        place-items: center;
+        overflow-x: hidden;
+      }
+
+      body.verification-locked .console {
+        width: min(100%, 760px);
+        margin: 0 auto;
+      }
+
+      body.verification-locked .mission-grid {
         display: none;
       }
 
@@ -1752,12 +1768,12 @@
 
     </style>
   </head>
-  <body>
+  <body class="verification-locked">
     <main class="console" aria-label="Sector message mission console">
-      <section class="verification-gate" id="verificationGate" aria-label="Bot verification">
+      <section class="verification-gate" id="verificationGate" role="dialog" aria-modal="true" aria-label="Bot verification">
         <p class="verification-gate__eyebrow">Verification required</p>
         <h2>Confirm access</h2>
-        <p class="verification-gate__copy">Complete both checks before sending a message or saving a calculation. You can use the rest of the page normally.</p>
+        <p class="verification-gate__copy">Complete both checks to unlock the website.</p>
         <div class="visual-challenge" id="visualChallenge">
           <p class="visual-challenge__prompt" id="visualChallengePrompt">Loading picture puzzle...</p>
           <div class="visual-challenge__choices" id="visualChallengeChoices" role="group" aria-label="Picture puzzle choices"></div>
@@ -1766,7 +1782,7 @@
         <div class="turnstile-widget" id="turnstileWidget"></div>
         <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
       </section>
-      <section class="mission-grid" aria-hidden="false">
+      <section class="mission-grid" aria-hidden="true" inert>
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
@@ -2011,8 +2027,10 @@
       const updateVerifiedAccess = () => {
         isVerified = !BOT_VERIFICATION_ENABLED || (Boolean(turnstileToken) && visualChallengeSolved);
         consoleShell.classList.toggle("is-verified", isVerified);
+        document.body.classList.toggle("verification-locked", !isVerified);
         verificationGate.setAttribute("aria-hidden", String(isVerified));
-        missionGrid.setAttribute("aria-hidden", "false");
+        missionGrid.setAttribute("aria-hidden", String(!isVerified));
+        missionGrid.toggleAttribute("inert", !isVerified);
 
         if (isVerified) {
           setVerificationStatus("Verified.");
