@@ -310,42 +310,5 @@ serve(async (request) => {
     return json(request, data || { ok: true });
   }
 
-  // Transitional compatibility only. Remove these branches immediately after
-  // the verified frontend is confirmed live.
-  if (mode === "visit") {
-    const path = readText(body.path, 256);
-    const safePath = path.startsWith("/") ? path : "/";
-    const { error } = await supabase.rpc("record_visit", {
-      p_client_id: clientId,
-      p_path: safePath,
-      p_user_agent: readText(body.userAgent, 1000),
-      p_timezone: readText(body.timezone, 100),
-      p_screen_size: readText(body.screenSize, 64),
-      p_platform: readText(body.platform, 120),
-      p_referrer: readText(body.referrer, 2048),
-    });
-    if (error) {
-      console.error("record_visit failed", error);
-      return json(request, { ok: false, message: "Visit could not be recorded." }, 500);
-    }
-    return json(request, { ok: true });
-  }
-
-  if (mode === "submit") {
-    const message = readText(body.message, 501);
-    if (!message || message.length > 500) {
-      return json(request, { ok: false, message: "Reply must be 1-500 characters." }, 400);
-    }
-    const { data, error } = await supabase.rpc("submit_drop", {
-      p_message: message,
-      p_client_id: clientId,
-    });
-    if (error) {
-      console.error("submit_drop failed", error);
-      return json(request, { ok: false, message: "Capture failed." }, 500);
-    }
-    return json(request, data || { ok: true });
-  }
-
   return json(request, { ok: false, message: "Invalid request mode." }, 400);
 });
