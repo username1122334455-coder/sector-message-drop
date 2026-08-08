@@ -1484,136 +1484,6 @@
         object-fit: contain;
       }
 
-      .verification-gate {
-        display: grid;
-        gap: 12px;
-        margin: 0;
-        padding: clamp(16px, 4vw, 22px);
-        border: 3px solid #184c52;
-        border-radius: 6px;
-        background:
-          linear-gradient(rgba(42, 139, 146, 0.08) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(42, 139, 146, 0.07) 1px, transparent 1px),
-          linear-gradient(180deg, #fff8df, #d9f3e5);
-        background-size: 18px 18px, 18px 18px, auto;
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45), 0 3px 0 #184c52;
-      }
-
-      .verification-gate__eyebrow,
-      .verification-gate__status {
-        margin: 0;
-        color: #315f64;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      .verification-gate h2 {
-        margin: 0;
-        color: #173d43;
-        font-size: clamp(1.35rem, 4.6vw, 2rem);
-        line-height: 1.05;
-      }
-
-      .verification-gate__copy {
-        margin: 0;
-        color: #315f64;
-        font-size: 0.95rem;
-        line-height: 1.35;
-      }
-
-      .turnstile-widget {
-        min-height: 65px;
-      }
-
-      .visual-challenge {
-        display: grid;
-        gap: 10px;
-      }
-
-      .visual-challenge__prompt {
-        margin: 0;
-        color: #173d43;
-        font-size: 0.95rem;
-        font-weight: 700;
-      }
-
-      .visual-challenge__choices {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .visual-challenge__choice {
-        display: grid;
-        min-width: 0;
-        min-height: 76px;
-        place-items: center;
-        padding: 6px;
-        border: 2px solid #184c52;
-        border-radius: 4px;
-        background: rgba(255, 253, 242, 0.9);
-        box-shadow: 0 3px 0 rgba(24, 76, 82, 0.3);
-        cursor: pointer;
-      }
-
-      .visual-challenge__choice:hover,
-      .visual-challenge__choice:focus-visible {
-        background: #fff2b8;
-        transform: translateY(-1px);
-      }
-
-      .visual-challenge__choice:active {
-        box-shadow: 0 1px 0 rgba(24, 76, 82, 0.3);
-        transform: translateY(2px);
-      }
-
-      .visual-challenge__choice.is-correct {
-        border-color: #287d65;
-        background: #ccefd8;
-      }
-
-      .visual-challenge__choice.is-wrong {
-        border-color: #b34c4c;
-        background: #ffd9cf;
-      }
-
-      .visual-challenge__choice canvas {
-        display: block;
-        width: 58px;
-        height: 58px;
-      }
-
-      .visual-challenge__refresh {
-        width: 42px;
-        height: 42px;
-        justify-self: end;
-        padding: 0;
-        font-size: 1.35rem;
-        line-height: 1;
-      }
-
-      .console.is-verified .verification-gate {
-        display: none;
-      }
-
-      body.verification-locked {
-        display: grid;
-        min-height: 100dvh;
-        place-items: center;
-        overflow-x: hidden;
-      }
-
-      body.verification-locked .console {
-        width: min(100%, 760px);
-        margin: 0 auto;
-      }
-
-      body.verification-locked .mission-grid {
-        display: none;
-      }
-
       body.theme-day {
         color: #173d43;
         background:
@@ -1724,29 +1594,6 @@
         color: #9bb8b2;
       }
 
-      body.theme-night .verification-gate {
-        border-color: #071014;
-        background:
-          linear-gradient(rgba(130, 184, 174, 0.07) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(130, 184, 174, 0.06) 1px, transparent 1px),
-          linear-gradient(180deg, #17363d, #10272d);
-        background-size: 18px 18px, 18px 18px, auto;
-        box-shadow: inset 0 0 0 2px rgba(220, 236, 232, 0.06), 0 3px 0 #071014;
-      }
-
-      body.theme-night .verification-gate h2,
-      body.theme-night .verification-gate__eyebrow,
-      body.theme-night .verification-gate__copy,
-      body.theme-night .verification-gate__status,
-      body.theme-night .visual-challenge__prompt {
-        color: #dcece8;
-      }
-
-      body.theme-night .visual-challenge__choice {
-        border-color: #071014;
-        background: #dcece8;
-      }
-
       @media (max-width: 520px) {
         .greeting-banner {
           min-height: 62px;
@@ -1769,21 +1616,9 @@
 
     </style>
   </head>
-  <body class="verification-locked">
+  <body>
     <main class="console" aria-label="Sector message mission console">
-      <section class="verification-gate" id="verificationGate" role="dialog" aria-modal="true" aria-label="Bot verification">
-        <p class="verification-gate__eyebrow">Verification required</p>
-        <h2>Confirm access</h2>
-        <p class="verification-gate__copy">Complete both checks to unlock the website.</p>
-        <div class="visual-challenge" id="visualChallenge">
-          <p class="visual-challenge__prompt" id="visualChallengePrompt">Loading picture puzzle...</p>
-          <div class="visual-challenge__choices" id="visualChallengeChoices" role="group" aria-label="Picture puzzle choices"></div>
-          <button class="visual-challenge__refresh" id="visualChallengeRefresh" type="button" aria-label="Load a new picture puzzle" title="New puzzle">↻</button>
-        </div>
-        <div class="turnstile-widget" id="turnstileWidget"></div>
-        <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading verification...</p>
-      </section>
-      <section class="mission-grid" aria-hidden="true" inert>
+      <section class="mission-grid">
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
@@ -1870,7 +1705,6 @@
       const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW";
 
       const form = document.querySelector("#messageForm");
-      const missionGrid = document.querySelector(".mission-grid");
       const input = document.querySelector("#messageInput");
       const sendButton = document.querySelector("#sendButton");
       const feedback = document.querySelector("#feedback");
@@ -1882,12 +1716,6 @@
       const usersOnline = document.querySelector("#usersOnline");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
-      const verificationGate = document.querySelector("#verificationGate");
-      const turnstileWidget = document.querySelector("#turnstileWidget");
-      const verificationStatus = document.querySelector("#verificationStatus");
-      const visualChallengePrompt = document.querySelector("#visualChallengePrompt");
-      const visualChallengeChoices = document.querySelector("#visualChallengeChoices");
-      const visualChallengeRefresh = document.querySelector("#visualChallengeRefresh");
       const bulletinGallery = document.querySelector("[data-bulletin-gallery]");
       const bulletinPhotos = [...document.querySelectorAll(".bulletin-board__photo")];
       const bulletinPrevious = document.querySelector("[data-bulletin-prev]");
@@ -1904,15 +1732,6 @@
       const previewTheme = isLocalPreview
         ? new URLSearchParams(window.location.search).get("theme")
         : null;
-      const TURNSTILE_SITE_KEY = "0x4AAAAAADuDuKqLvbYdHvR1";
-      const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
-      const BOT_VERIFICATION_ENABLED = true;
-      const isTurnstileConfigured = TURNSTILE_SITE_KEY !== "PASTE_CLOUDFLARE_TURNSTILE_SITE_KEY_HERE";
-      const turnstileSiteKey = isLocalPreview
-        ? TURNSTILE_TEST_SITE_KEY
-        : isTurnstileConfigured
-          ? TURNSTILE_SITE_KEY
-          : "";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1941,17 +1760,7 @@
       let isSending = false;
       let bulletinPhotoIndex = 0;
       let bulletinPhotoTimer;
-      let isVerified = false;
-      let turnstileToken = "";
-      let turnstileWidgetId = null;
-      let visualChallengeSolved = false;
-      let visualChallengeTimer = null;
-      let verificationProof = "";
-      let verificationExpiresAt = 0;
-      let verificationExpiryTimer = null;
-      let verificationAttemptId = crypto.randomUUID();
-      let isVerificationPending = false;
-      let hasStartedVerifiedPresence = false;
+      let hasRecordedVisitor = false;
 
       const isLikelyAutomatedClient = /bot|crawler|spider|slurp|bingpreview|headless|lighthouse|pagespeed|facebookexternalhit|preview|validator|monitoring|uptime/i
         .test(navigator.userAgent || "");
@@ -1964,312 +1773,18 @@
         ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
         : null;
 
-      const setVerificationStatus = (message, type = "") => {
-        verificationStatus.textContent = message;
-        verificationStatus.dataset.type = type;
-      };
-
-      const visualPuzzleShapes = [
-        { id: "circle", label: "circle" },
-        { id: "triangle", label: "triangle" },
-        { id: "diamond", label: "diamond" },
-        { id: "star", label: "star" },
-      ];
-
-      const shuffleVisualPuzzle = (items) => {
-        const shuffled = [...items];
-        for (let index = shuffled.length - 1; index > 0; index -= 1) {
-          const swapIndex = Math.floor(Math.random() * (index + 1));
-          [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-        }
-        return shuffled;
-      };
-
-      const drawVisualPuzzleShape = (canvas, shape, color) => {
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-        const size = 72;
-        canvas.width = size * pixelRatio;
-        canvas.height = size * pixelRatio;
-        const context = canvas.getContext("2d");
-        context.scale(pixelRatio, pixelRatio);
-        context.clearRect(0, 0, size, size);
-        context.fillStyle = color;
-        context.strokeStyle = "#173d43";
-        context.lineWidth = 3;
-        context.lineJoin = "round";
-        context.beginPath();
-
-        if (shape === "circle") {
-          context.arc(36, 36, 22, 0, Math.PI * 2);
-        } else if (shape === "triangle") {
-          context.moveTo(36, 10);
-          context.lineTo(62, 58);
-          context.lineTo(10, 58);
-          context.closePath();
-        } else if (shape === "diamond") {
-          context.moveTo(36, 8);
-          context.lineTo(64, 36);
-          context.lineTo(36, 64);
-          context.lineTo(8, 36);
-          context.closePath();
-        } else {
-          for (let point = 0; point < 10; point += 1) {
-            const radius = point % 2 === 0 ? 27 : 12;
-            const angle = -Math.PI / 2 + point * Math.PI / 5;
-            const x = 36 + Math.cos(angle) * radius;
-            const y = 36 + Math.sin(angle) * radius;
-            if (point === 0) context.moveTo(x, y);
-            else context.lineTo(x, y);
-          }
-          context.closePath();
-        }
-
-        context.fill();
-        context.stroke();
-      };
-
-      const updateVerifiedAccess = () => {
-        const localPreviewIsVerified = Boolean(turnstileToken) && visualChallengeSolved;
-        const serverSessionIsVerified = Boolean(verificationProof) && verificationExpiresAt > Date.now();
-        isVerified = !BOT_VERIFICATION_ENABLED || (
-          isLocalPreview ? localPreviewIsVerified : serverSessionIsVerified
-        );
-        consoleShell.classList.toggle("is-verified", isVerified);
-        document.body.classList.toggle("verification-locked", !isVerified);
-        verificationGate.setAttribute("aria-hidden", String(isVerified));
-        missionGrid.setAttribute("aria-hidden", String(!isVerified));
-        missionGrid.toggleAttribute("inert", !isVerified);
-
-        if (isVerified) {
-          setVerificationStatus("Verified.");
-        } else if (isVerificationPending) {
-          setVerificationStatus("Completing secure verification...");
-        } else if (turnstileToken) {
-          setVerificationStatus("Cloud check passed. Solve the picture puzzle.");
-        } else if (visualChallengeSolved) {
-          setVerificationStatus("Picture puzzle passed. Completing cloud check...");
-        } else {
-          setVerificationStatus("Solve the picture puzzle while the cloud check runs.");
-        }
-
-        updateDropWindowState();
-
-        if (isVerified && !isLocalPreview && !isLikelyAutomatedClient) {
-          if (!hasStartedVerifiedPresence) {
-            hasStartedVerifiedPresence = true;
-            initPresence();
-          }
-        }
-      };
-
-      const renderVisualChallenge = () => {
-        if (!visualChallengePrompt || !visualChallengeChoices) return;
-        if (visualChallengeTimer) clearTimeout(visualChallengeTimer);
-
-        visualChallengeSolved = false;
-        const target = visualPuzzleShapes[Math.floor(Math.random() * visualPuzzleShapes.length)];
-        const colors = shuffleVisualPuzzle(["#ff8a73", "#f4c95d", "#65b6ab", "#8bc8e8"]);
-        const choices = shuffleVisualPuzzle(visualPuzzleShapes);
-        visualChallengePrompt.textContent = `Select the ${target.label.toUpperCase()} symbol.`;
-        visualChallengeChoices.replaceChildren();
-
-        choices.forEach((choice, index) => {
-          const button = document.createElement("button");
-          button.className = "visual-challenge__choice";
-          button.type = "button";
-          button.setAttribute("aria-label", `Picture choice ${index + 1}`);
-          const canvas = document.createElement("canvas");
-          canvas.setAttribute("aria-hidden", "true");
-          drawVisualPuzzleShape(canvas, choice.id, colors[index]);
-          button.append(canvas);
-
-          button.addEventListener("click", () => {
-            const buttons = visualChallengeChoices.querySelectorAll("button");
-            buttons.forEach((item) => { item.disabled = true; });
-
-            if (choice.id === target.id) {
-              visualChallengeSolved = true;
-              button.classList.add("is-correct");
-              updateVerifiedAccess();
-              void completeVerification();
-              return;
-            }
-
-            button.classList.add("is-wrong");
-            setVerificationStatus("Not a match. Loading a new puzzle.", "error");
-            visualChallengeTimer = setTimeout(() => {
-              renderVisualChallenge();
-              updateVerifiedAccess();
-            }, 650);
-          });
-
-          visualChallengeChoices.append(button);
-        });
-
-        updateVerifiedAccess();
-      };
-
-      const removeTurnstileWidget = () => {
-        if (window.turnstile && turnstileWidgetId !== null) {
-          window.turnstile.remove(turnstileWidgetId);
-          turnstileWidgetId = null;
-        }
-      };
-
-      const resetVerification = (message = "") => {
-        if (!BOT_VERIFICATION_ENABLED) {
-          updateVerifiedAccess();
-          return;
-        }
-
-        if (verificationExpiryTimer) clearTimeout(verificationExpiryTimer);
-        verificationExpiryTimer = null;
-        verificationProof = "";
-        verificationExpiresAt = 0;
-        verificationAttemptId = crypto.randomUUID();
-        isVerificationPending = false;
-        turnstileToken = "";
-        renderVisualChallenge();
-
-        if (window.turnstile && turnstileWidgetId !== null) {
-          window.turnstile.reset(turnstileWidgetId);
-        } else {
-          renderTurnstile();
-        }
-
-        updateVerifiedAccess();
-        if (message) setVerificationStatus(message, "error");
-      };
-
-      const completeVerification = async () => {
-        if (!BOT_VERIFICATION_ENABLED || isVerified || isVerificationPending) return;
-        if (!turnstileToken || !visualChallengeSolved) return;
-
-        if (isLocalPreview) {
-          updateVerifiedAccess();
-          return;
-        }
-
-        if (!client) {
-          setVerificationStatus("Verification service is not configured.", "error");
-          return;
-        }
-
-        isVerificationPending = true;
-        updateVerifiedAccess();
-
-        try {
-          const metadata = getVisitorMetadata();
-          const { data, error } = await withTimeout(
-            client.functions.invoke("submit-drop-verified", {
-              body: {
-                mode: "verify",
-                clientId: getClientId(),
-                turnstileToken,
-                verificationAttemptId,
-                path: window.location.pathname || "/",
-                userAgent: metadata.p_user_agent,
-                timezone: metadata.p_timezone,
-                screenSize: metadata.p_screen_size,
-                platform: metadata.p_platform,
-                referrer: metadata.p_referrer,
-              },
-            }),
-            12_000,
-          );
-
-          if (error) throw error;
-          const expiresAt = Date.parse(data?.expiresAt || "");
-          if (!data?.ok || !data?.verificationProof || !Number.isFinite(expiresAt)) {
-            throw new Error(data?.message || "Verification failed.");
-          }
-
-          verificationProof = data.verificationProof;
-          verificationExpiresAt = expiresAt;
-          turnstileToken = "";
-          removeTurnstileWidget();
-
-          const expiresIn = Math.max(verificationExpiresAt - Date.now(), 1000);
-          verificationExpiryTimer = setTimeout(() => {
-            resetVerification("Verification expired. Complete both checks again.");
-          }, expiresIn);
-        } catch (error) {
-          console.error("Server verification failed:", error);
-          resetVerification();
-          setVerificationStatus("Verification failed. Try again.", "error");
-        } finally {
-          isVerificationPending = false;
-          updateVerifiedAccess();
-        }
-      };
-
-      const setTurnstileToken = (token) => {
-        turnstileToken = token || "";
-        updateVerifiedAccess();
-        void completeVerification();
-      };
-
-      const renderTurnstile = () => {
-        if (!BOT_VERIFICATION_ENABLED) {
-          updateVerifiedAccess();
-          return;
-        }
-
-        if (!turnstileWidget) return;
-
-        if (!turnstileSiteKey) {
-          setVerificationStatus("Verification setup required.");
-          return;
-        }
-
-        if (!window.turnstile) {
-          setVerificationStatus("Loading verification...");
-          return;
-        }
-
-        if (turnstileWidgetId !== null) return;
-
-        turnstileWidgetId = window.turnstile.render(turnstileWidget, {
-          sitekey: turnstileSiteKey,
-          action: "turnstile-spin-v2",
-          theme: "auto",
-          callback: (token) => setTurnstileToken(token),
-          "expired-callback": () => {
-            if (!verificationProof) resetVerification("Verification expired. Try again.");
-          },
-          "error-callback": () => {
-            if (!verificationProof) resetVerification("Verification failed. Try again.");
-          },
-        });
-      };
-
-      window.onTurnstileLoaded = renderTurnstile;
-
-      visualChallengeRefresh?.addEventListener("click", () => {
-        renderVisualChallenge();
-        setVerificationStatus("New picture puzzle loaded.");
-      });
-
       const submitDrop = async (message) => {
         const payload = {
           mode: "submit",
           message,
           clientId: getClientId(),
-          verificationProof,
         };
-
-        if (BOT_VERIFICATION_ENABLED && !isLocalPreview) {
-          return client.functions.invoke("submit-drop-verified", { body: payload });
-        }
 
         if (isLocalPreview) {
           return { data: { ok: true, preview: true }, error: null };
         }
 
-        return client.rpc("submit_drop", {
-          p_message: message,
-          p_client_id: payload.clientId,
-        });
+        return client.functions.invoke("submit-drop-verified", { body: payload });
       };
 
       const showBulletinPhoto = (nextIndex) => {
@@ -2341,9 +1856,8 @@
 
       const updateDropWindowState = () => {
         dropWindowClosed = false;
-        const accessLocked = !isVerified;
-        input.disabled = accessLocked || dropWindowClosed || isSending;
-        sendButton.disabled = accessLocked || dropWindowClosed || isSending;
+        input.disabled = dropWindowClosed || isSending;
+        sendButton.disabled = dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
         consoleShell.classList.toggle("is-offline", dropWindowClosed);
         if (feedback.dataset.source === "curfew") {
@@ -2446,6 +1960,36 @@
           p_platform: navigator.userAgentData?.platform || navigator.platform || "",
           p_referrer: document.referrer || "",
         };
+      };
+
+      const recordVisitor = async () => {
+        if (!client || isLocalPreview || isLikelyAutomatedClient || hasRecordedVisitor) return;
+
+        hasRecordedVisitor = true;
+        const metadata = getVisitorMetadata();
+
+        try {
+          const { data, error } = await withTimeout(
+            client.functions.invoke("submit-drop-verified", {
+              body: {
+                mode: "visit",
+                clientId: getClientId(),
+                path: window.location.pathname || "/",
+                userAgent: metadata.p_user_agent,
+                timezone: metadata.p_timezone,
+                screenSize: metadata.p_screen_size,
+                platform: metadata.p_platform,
+                referrer: metadata.p_referrer,
+              },
+            }),
+            9000,
+          );
+
+          if (error || !data?.ok) throw error || new Error(data?.message || "Visit was not recorded.");
+        } catch (error) {
+          hasRecordedVisitor = false;
+          console.error("Visit recording failed:", error);
+        }
       };
 
       const setKeypadStatus = (message, type = "") => {
@@ -2703,12 +2247,6 @@
       keypadSubmit.addEventListener("click", async () => {
         const expression = keypadDisplay.dataset.expression || "";
 
-        if (BOT_VERIFICATION_ENABLED && !isVerified) {
-          setKeypadStatus("Complete verification first.", "is-error");
-          renderTurnstile();
-          return;
-        }
-
         if (!expression) {
           setKeypadStatus("Enter a calculation.", "is-error");
           return;
@@ -2743,9 +2281,6 @@
         } catch (error) {
           console.error("Calculator storage failed:", error);
           setKeypadStatus(`= ${result} · save failed`, "is-error");
-          if (!isLocalPreview) {
-            resetVerification("Secure session ended. Complete both checks again.");
-          }
         } finally {
           keypadSubmit.disabled = false;
         }
@@ -2796,11 +2331,9 @@
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       scheduleTerminalLog();
       updateCaret();
-      if (BOT_VERIFICATION_ENABLED) {
-        renderVisualChallenge();
-        renderTurnstile();
-      } else {
-        updateVerifiedAccess();
+      if (!isLocalPreview && !isLikelyAutomatedClient) {
+        initPresence();
+        void recordVisitor();
       }
 
       form.addEventListener("submit", async (event) => {
@@ -2811,12 +2344,6 @@
 
         const value = input.value.trim();
         const issue = validate(value);
-
-        if (BOT_VERIFICATION_ENABLED && !isVerified) {
-          setFeedback("Complete verification first.", "is-error");
-          renderTurnstile();
-          return;
-        }
 
         if (issue) {
           setFeedback(issue, "is-error");
@@ -2844,9 +2371,6 @@
           if (error) {
             console.error("Supabase drop failed:", error);
             setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : error.message || "Drop failed. Try again.", "is-error");
-            if (!isLocalPreview) {
-              resetVerification("Secure session ended. Complete both checks again.");
-            }
             return;
           }
 
@@ -2874,9 +2398,6 @@
         } catch (error) {
           console.error("Supabase drop failed:", error);
           setFeedback(passwordPromptMode ? "CAPTURE FAILED. TRY AGAIN." : "Drop failed. Try again.", "is-error");
-          if (!isLocalPreview) {
-            resetVerification("Secure session ended. Complete both checks again.");
-          }
         } finally {
           isSending = false;
           panel.classList.remove("is-sending");
@@ -2884,6 +2405,5 @@
         }
       });
     </script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=onTurnstileLoaded" async defer></script>
   </body>
 </html>
