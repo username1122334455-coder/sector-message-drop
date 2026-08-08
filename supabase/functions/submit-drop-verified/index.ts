@@ -99,7 +99,6 @@ serve(async (request) => {
   const remoteIp = getClientIp(request);
   const forwardedHeaders: Record<string, string> = {};
   if (remoteIp) {
-    forwardedHeaders["cf-connecting-ip"] = remoteIp;
     forwardedHeaders["x-forwarded-for"] = remoteIp;
   }
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
