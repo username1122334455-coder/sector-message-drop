@@ -55,14 +55,49 @@ const isAllowedOrigin = (request: Request) => {
   return !origin || allowedOrigins.has(origin);
 };
 
+const canonicalizeIp = (value: string | null) => {
+  const candidate = value?.trim() || "";
+  if (!candidate || candidate.length > 64) return "";
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(candidate)) {
+    const octets = candidate.split(".").map(Number);
+    if (octets.every((octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255)) {
+      return octets.join(".");
+    }
+    return "";
+  }
+
+  if (!candidate.includes(":")) return "";
+
+  try {
+    const hostname = new URL(`http://[${candidate}]/`).hostname;
+    const canonical = hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
+    if (!canonical.includes(":")) return "";
+
+    const normalized = canonical.toLowerCase();
+    const mappedIpv4 = normalized.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (!mappedIpv4) return normalized;
+
+    const high = Number.parseInt(mappedIpv4[1], 16);
+    const low = Number.parseInt(mappedIpv4[2], 16);
+    return `::ffff:${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+  } catch {
+    return "";
+  }
+};
+
+const isPseudoIpv4 = (value: string) => {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return false;
+  return Number(value.split(".")[0]) >= 240;
+};
+
 const getClientIp = (request: Request) => {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  return (
-    request.headers.get("cf-connecting-ip") ||
-    forwardedFor?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    ""
-  );
+  const connectingIp = canonicalizeIp(request.headers.get("cf-connecting-ip"));
+  if (!isPseudoIpv4(connectingIp)) return connectingIp;
+
+  return canonicalizeIp(request.headers.get("cf-connecting-ipv6")) || connectingIp;
 };
 
 const readText = (value: unknown, maxLength: number) =>
@@ -95,6 +130,27 @@ const getSessionKey = (turnstileSecret: string) =>
     false,
     ["sign", "verify"],
   );
+
+const createIpHash = async (ipAddress: string, ipHashSecret: string) => {
+  if (!ipAddress) return "";
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(`dropmmssgg-ip-hash-v1\0${ipHashSecret}`),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(ipAddress),
+  );
+
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
 
 const createVerificationProof = async (
   clientId: string,
@@ -213,10 +269,11 @@ serve(async (request) => {
   }
 
   const turnstileSecret = Deno.env.get("TURNSTILE_SECRET");
+  const ipHashSecret = Deno.env.get("IP_HASH_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey =
     Deno.env.get("SUPABASE_SECRET_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!turnstileSecret || !supabaseUrl || !serviceRoleKey) {
+  if (!turnstileSecret || !ipHashSecret || !supabaseUrl || !serviceRoleKey) {
     return json(request, { ok: false, message: "Verification service is not configured." }, 500);
   }
 
@@ -234,13 +291,9 @@ serve(async (request) => {
   }
 
   const remoteIp = getClientIp(request);
-  const forwardedHeaders: Record<string, string> = {};
-  if (remoteIp) {
-    forwardedHeaders["x-forwarded-for"] = remoteIp;
-  }
+  const remoteIpHash = await createIpHash(remoteIp, ipHashSecret);
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
-    global: { headers: forwardedHeaders },
   });
 
   if (mode === "verify") {
@@ -260,7 +313,7 @@ serve(async (request) => {
 
     const path = readText(body.path, 256);
     const safePath = path.startsWith("/") ? path : "/";
-    const { error: visitError } = await supabase.rpc("record_visit", {
+    const { error: visitError } = await supabase.rpc("record_visit_v2", {
       p_client_id: clientId,
       p_path: safePath,
       p_user_agent: readText(body.userAgent, 1000),
@@ -268,6 +321,8 @@ serve(async (request) => {
       p_screen_size: readText(body.screenSize, 64),
       p_platform: readText(body.platform, 120),
       p_referrer: readText(body.referrer, 2048),
+      p_ip_address: remoteIp || null,
+      p_ip_hash: remoteIpHash || null,
     });
     if (visitError) {
       console.error("record_visit failed", visitError);
@@ -298,9 +353,11 @@ serve(async (request) => {
       return json(request, { ok: false, message: "Reply must be 1-500 characters." }, 400);
     }
 
-    const { data, error } = await supabase.rpc("submit_drop", {
+    const { data, error } = await supabase.rpc("submit_drop_v2", {
       p_message: message,
       p_client_id: clientId,
+      p_ip_address: remoteIp || null,
+      p_ip_hash: remoteIpHash || null,
     });
     if (error) {
       console.error("submit_drop failed", error);
