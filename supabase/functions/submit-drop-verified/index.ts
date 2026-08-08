@@ -1,15 +1,22 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+const expectedAction = "dropmmssgg-access";
+const allowedHostnames = new Set(["dropmmssgg.uk", "www.dropmmssgg.uk"]);
 const allowedOrigins = new Set([
   "https://dropmmssgg.uk",
   "https://www.dropmmssgg.uk",
 ]);
+const sessionLifetimeMs = 15 * 60 * 1000;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 type RequestBody = {
   mode?: unknown;
   message?: unknown;
   clientId?: unknown;
+  turnstileToken?: unknown;
+  verificationProof?: unknown;
   path?: unknown;
   userAgent?: unknown;
   timezone?: unknown;
@@ -64,6 +71,135 @@ const readText = (value: unknown, maxLength: number) =>
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
+const toBase64Url = (bytes: Uint8Array) => {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/g, "");
+};
+
+const fromBase64Url = (value: string) => {
+  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+};
+
+const getSessionKey = (turnstileSecret: string) =>
+  crypto.subtle.importKey(
+    "raw",
+    encoder.encode(`dropmmssgg-turnstile-session-v1\0${turnstileSecret}`),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+
+const createVerificationProof = async (
+  clientId: string,
+  turnstileSecret: string,
+) => {
+  const expiresAt = Date.now() + sessionLifetimeMs;
+  const payload = toBase64Url(encoder.encode(JSON.stringify({
+    version: 1,
+    clientId,
+    expiresAt,
+    nonce: crypto.randomUUID(),
+  })));
+  const key = await getSessionKey(turnstileSecret);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+
+  return {
+    proof: `${payload}.${toBase64Url(new Uint8Array(signature))}`,
+    expiresAt,
+  };
+};
+
+const verifyVerificationProof = async (
+  proof: string,
+  clientId: string,
+  turnstileSecret: string,
+) => {
+  if (!proof || proof.length > 4096) return false;
+  const [payload, encodedSignature, extra] = proof.split(".");
+  if (!payload || !encodedSignature || extra) return false;
+
+  try {
+    const key = await getSessionKey(turnstileSecret);
+    const signatureIsValid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      fromBase64Url(encodedSignature),
+      encoder.encode(payload),
+    );
+    if (!signatureIsValid) return false;
+
+    const data = JSON.parse(decoder.decode(fromBase64Url(payload)));
+    return data?.version === 1 &&
+      data?.clientId === clientId &&
+      Number.isFinite(data?.expiresAt) &&
+      data.expiresAt > Date.now();
+  } catch {
+    return false;
+  }
+};
+
+const validateTurnstile = async (
+  token: string,
+  remoteIp: string,
+  turnstileSecret: string,
+) => {
+  if (!token || token.length > 2048) {
+    return { ok: false, message: "Verification required.", codes: [] };
+  }
+
+  const verificationBody = new URLSearchParams({
+    secret: turnstileSecret,
+    response: token,
+  });
+  if (remoteIp) verificationBody.set("remoteip", remoteIp);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: verificationBody,
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) throw new Error(`siteverify returned ${response.status}`);
+
+    const result: Record<string, unknown> = await response.json();
+    if (!result.success) {
+      return {
+        ok: false,
+        message: "Verification failed.",
+        codes: result["error-codes"] || [],
+      };
+    }
+    if (result.action !== expectedAction || !allowedHostnames.has(String(result.hostname || ""))) {
+      console.error("siteverify context mismatch", {
+        action: result.action,
+        hostname: result.hostname,
+      });
+      return { ok: false, message: "Verification failed.", codes: ["context-mismatch"] };
+    }
+
+    return { ok: true, message: "Verified.", codes: [] };
+  } catch (error) {
+    console.error("siteverify failed", error);
+    return { ok: false, message: "Verification unavailable.", codes: ["internal-error"] };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 serve(async (request) => {
   if (request.method === "OPTIONS") {
     if (!isAllowedOrigin(request)) return json(request, { ok: false }, 403);
@@ -76,11 +212,12 @@ serve(async (request) => {
     return json(request, { ok: false, message: "Origin not allowed." }, 403);
   }
 
+  const turnstileSecret = Deno.env.get("TURNSTILE_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey =
     Deno.env.get("SUPABASE_SECRET_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
-    return json(request, { ok: false, message: "Service is not configured." }, 500);
+  if (!turnstileSecret || !supabaseUrl || !serviceRoleKey) {
+    return json(request, { ok: false, message: "Verification service is not configured." }, 500);
   }
 
   let body: RequestBody;
@@ -106,6 +243,75 @@ serve(async (request) => {
     global: { headers: forwardedHeaders },
   });
 
+  if (mode === "verify") {
+    const turnstileToken = readText(body.turnstileToken, 2049);
+    const verification = await validateTurnstile(
+      turnstileToken,
+      remoteIp,
+      turnstileSecret,
+    );
+    if (!verification.ok) {
+      return json(request, {
+        ok: false,
+        message: verification.message,
+        codes: verification.codes,
+      }, 403);
+    }
+
+    const path = readText(body.path, 256);
+    const safePath = path.startsWith("/") ? path : "/";
+    const { error: visitError } = await supabase.rpc("record_visit", {
+      p_client_id: clientId,
+      p_path: safePath,
+      p_user_agent: readText(body.userAgent, 1000),
+      p_timezone: readText(body.timezone, 100),
+      p_screen_size: readText(body.screenSize, 64),
+      p_platform: readText(body.platform, 120),
+      p_referrer: readText(body.referrer, 2048),
+    });
+    if (visitError) {
+      console.error("record_visit failed", visitError);
+      return json(request, { ok: false, message: "Access could not be started." }, 500);
+    }
+
+    const session = await createVerificationProof(clientId, turnstileSecret);
+    return json(request, {
+      ok: true,
+      verificationProof: session.proof,
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    });
+  }
+
+  if (mode === "submit-verified") {
+    const verificationProof = readText(body.verificationProof, 4097);
+    const proofIsValid = await verifyVerificationProof(
+      verificationProof,
+      clientId,
+      turnstileSecret,
+    );
+    if (!proofIsValid) {
+      return json(request, { ok: false, message: "Verification expired." }, 403);
+    }
+
+    const message = readText(body.message, 501);
+    if (!message || message.length > 500) {
+      return json(request, { ok: false, message: "Reply must be 1-500 characters." }, 400);
+    }
+
+    const { data, error } = await supabase.rpc("submit_drop", {
+      p_message: message,
+      p_client_id: clientId,
+    });
+    if (error) {
+      console.error("submit_drop failed", error);
+      return json(request, { ok: false, message: "Capture failed." }, 500);
+    }
+
+    return json(request, data || { ok: true });
+  }
+
+  // Transitional compatibility only. Remove these branches immediately after
+  // the verified frontend is confirmed live.
   if (mode === "visit") {
     const path = readText(body.path, 256);
     const safePath = path.startsWith("/") ? path : "/";
@@ -122,7 +328,6 @@ serve(async (request) => {
       console.error("record_visit failed", error);
       return json(request, { ok: false, message: "Visit could not be recorded." }, 500);
     }
-
     return json(request, { ok: true });
   }
 
@@ -131,7 +336,6 @@ serve(async (request) => {
     if (!message || message.length > 500) {
       return json(request, { ok: false, message: "Reply must be 1-500 characters." }, 400);
     }
-
     const { data, error } = await supabase.rpc("submit_drop", {
       p_message: message,
       p_client_id: clientId,
@@ -140,7 +344,6 @@ serve(async (request) => {
       console.error("submit_drop failed", error);
       return json(request, { ok: false, message: "Capture failed." }, 500);
     }
-
     return json(request, data || { ok: true });
   }
 

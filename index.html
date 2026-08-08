@@ -1484,6 +1484,75 @@
         object-fit: contain;
       }
 
+      .verification-gate {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        min-height: 100dvh;
+        place-items: center;
+        padding: 20px;
+        background:
+          radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.9) 0 2px, transparent 3px),
+          linear-gradient(180deg, #9be2eb, #e4f5d2);
+        background-size: 36px 36px, auto;
+      }
+
+      .verification-gate__card {
+        display: grid;
+        width: min(100%, 520px);
+        gap: 14px;
+        padding: clamp(20px, 5vw, 30px);
+        border: 4px solid #184c52;
+        border-radius: 8px;
+        background:
+          linear-gradient(rgba(42, 139, 146, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(42, 139, 146, 0.07) 1px, transparent 1px),
+          linear-gradient(180deg, #fff8df, #d9f3e5);
+        background-size: 18px 18px, 18px 18px, auto;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55), 0 6px 0 #ff7f70;
+      }
+
+      .verification-gate__eyebrow,
+      .verification-gate__status {
+        margin: 0;
+        color: #315f64;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .verification-gate h2 {
+        margin: 0;
+        color: #173d43;
+        font-size: clamp(1.6rem, 6vw, 2.35rem);
+        line-height: 1.05;
+      }
+
+      .verification-gate__copy {
+        margin: 0;
+        color: #315f64;
+        line-height: 1.45;
+      }
+
+      .turnstile-widget {
+        min-height: 65px;
+      }
+
+      body:not(.verification-locked) .verification-gate {
+        display: none;
+      }
+
+      body.verification-locked {
+        min-height: 100dvh;
+        overflow: hidden;
+      }
+
+      body.verification-locked .mission-grid {
+        display: none;
+      }
+
       body.theme-day {
         color: #173d43;
         background:
@@ -1616,9 +1685,18 @@
 
     </style>
   </head>
-  <body>
+  <body class="verification-locked">
     <main class="console" aria-label="Sector message mission console">
-      <section class="mission-grid">
+      <section class="verification-gate" id="verificationGate" role="dialog" aria-modal="true" aria-label="Human verification">
+        <div class="verification-gate__card">
+          <p class="verification-gate__eyebrow">Verification required</p>
+          <h2>Confirm access</h2>
+          <p class="verification-gate__copy">Complete the Cloudflare check once to open the website. Your verified session stays active while you use the page.</p>
+          <div class="turnstile-widget" id="turnstileWidget"></div>
+          <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading secure verification...</p>
+        </div>
+      </section>
+      <section class="mission-grid" aria-hidden="true" inert>
         <aside class="bulletin-board" aria-label="Bulletin board">
           <!-- BULLETIN_MEDIA_START -->
           <div class="bulletin-board__media" data-bulletin-gallery>
@@ -1716,6 +1794,10 @@
       const usersOnline = document.querySelector("#usersOnline");
       const missionAlert = document.querySelector("#missionAlert");
       const missionAlertText = document.querySelector("#missionAlertText");
+      const missionGrid = document.querySelector(".mission-grid");
+      const verificationGate = document.querySelector("#verificationGate");
+      const turnstileWidget = document.querySelector("#turnstileWidget");
+      const verificationStatus = document.querySelector("#verificationStatus");
       const bulletinGallery = document.querySelector("[data-bulletin-gallery]");
       const bulletinPhotos = [...document.querySelectorAll(".bulletin-board__photo")];
       const bulletinPrevious = document.querySelector("[data-bulletin-prev]");
@@ -1732,6 +1814,13 @@
       const previewTheme = isLocalPreview
         ? new URLSearchParams(window.location.search).get("theme")
         : null;
+      const TURNSTILE_SITE_KEY = "0x4AAAAAAEKdGoYkn16ocHuV";
+      const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
+      const BOT_VERIFICATION_ENABLED = true;
+      const turnstileSiteKey = isLocalPreview
+        ? TURNSTILE_TEST_SITE_KEY
+        : TURNSTILE_SITE_KEY;
+      const verificationSessionKey = "dropmmssgg-verification-session-v1";
       const responseCooldownMs = 3500;
       const keywordReplies = [
         { keyword: "iphone", reply: "airjordan" },
@@ -1760,10 +1849,14 @@
       let isSending = false;
       let bulletinPhotoIndex = 0;
       let bulletinPhotoTimer;
-      let hasRecordedVisitor = false;
-
-      const isLikelyAutomatedClient = /bot|crawler|spider|slurp|bingpreview|headless|lighthouse|pagespeed|facebookexternalhit|preview|validator|monitoring|uptime/i
-        .test(navigator.userAgent || "");
+      let isVerified = false;
+      let turnstileToken = "";
+      let turnstileWidgetId = null;
+      let verificationProof = "";
+      let verificationExpiresAt = 0;
+      let verificationExpiryTimer = null;
+      let isVerificationPending = false;
+      let hasStartedVerifiedPresence = false;
 
       const isConfigured =
         SUPABASE_URL.startsWith("https://") &&
@@ -1773,19 +1866,211 @@
         ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
         : null;
 
+      const setVerificationStatus = (message, type = "") => {
+        verificationStatus.textContent = message;
+        verificationStatus.dataset.type = type;
+      };
+
+      const clearStoredVerification = () => {
+        try {
+          sessionStorage.removeItem(verificationSessionKey);
+        } catch {
+          // Storage may be unavailable in strict privacy modes.
+        }
+      };
+
+      const storeVerification = () => {
+        try {
+          sessionStorage.setItem(verificationSessionKey, JSON.stringify({
+            proof: verificationProof,
+            expiresAt: verificationExpiresAt,
+          }));
+        } catch {
+          // The in-memory session still works when storage is unavailable.
+        }
+      };
+
+      const restoreVerification = () => {
+        if (isLocalPreview) return;
+        try {
+          const stored = JSON.parse(sessionStorage.getItem(verificationSessionKey) || "null");
+          if (typeof stored?.proof === "string" && Number(stored?.expiresAt) > Date.now()) {
+            verificationProof = stored.proof;
+            verificationExpiresAt = Number(stored.expiresAt);
+          } else {
+            clearStoredVerification();
+          }
+        } catch {
+          clearStoredVerification();
+        }
+      };
+
+      const removeTurnstileWidget = () => {
+        if (window.turnstile && turnstileWidgetId !== null) {
+          window.turnstile.remove(turnstileWidgetId);
+          turnstileWidgetId = null;
+        }
+      };
+
+      const updateVerifiedAccess = () => {
+        const localPreviewIsVerified = Boolean(turnstileToken);
+        const serverSessionIsVerified = Boolean(verificationProof) && verificationExpiresAt > Date.now();
+        isVerified = !BOT_VERIFICATION_ENABLED || (
+          isLocalPreview ? localPreviewIsVerified : serverSessionIsVerified
+        );
+
+        document.body.classList.toggle("verification-locked", !isVerified);
+        verificationGate.setAttribute("aria-hidden", String(isVerified));
+        missionGrid.setAttribute("aria-hidden", String(!isVerified));
+        missionGrid.toggleAttribute("inert", !isVerified);
+
+        if (isVerified) {
+          setVerificationStatus("Verified. Opening website...");
+          if (!isLocalPreview && !hasStartedVerifiedPresence) {
+            hasStartedVerifiedPresence = true;
+            initPresence();
+          }
+        } else if (isVerificationPending) {
+          setVerificationStatus("Completing secure verification...");
+        } else {
+          setVerificationStatus("Complete the Cloudflare check to continue.");
+        }
+
+        updateDropWindowState();
+      };
+
+      const scheduleVerificationExpiry = () => {
+        if (verificationExpiryTimer) clearTimeout(verificationExpiryTimer);
+        verificationExpiryTimer = null;
+        if (!verificationProof || verificationExpiresAt <= Date.now()) return;
+
+        verificationExpiryTimer = setTimeout(() => {
+          resetVerification("Your secure session expired. Verify once to continue.");
+        }, Math.max(verificationExpiresAt - Date.now(), 1000));
+      };
+
+      const renderTurnstile = () => {
+        if (!BOT_VERIFICATION_ENABLED || isVerified || !turnstileWidget) return;
+        if (!turnstileSiteKey) {
+          setVerificationStatus("Verification setup is incomplete.", "error");
+          return;
+        }
+        if (!window.turnstile) {
+          setVerificationStatus("Loading secure verification...");
+          return;
+        }
+        if (turnstileWidgetId !== null) return;
+
+        turnstileWidgetId = window.turnstile.render(turnstileWidget, {
+          sitekey: turnstileSiteKey,
+          action: "dropmmssgg-access",
+          theme: "auto",
+          callback: (token) => {
+            turnstileToken = token || "";
+            if (isLocalPreview) {
+              updateVerifiedAccess();
+            } else {
+              void completeVerification();
+            }
+          },
+          "expired-callback": () => {
+            turnstileToken = "";
+            if (!verificationProof) setVerificationStatus("Verification expired. Try again.", "error");
+          },
+          "error-callback": () => {
+            turnstileToken = "";
+            if (!verificationProof) setVerificationStatus("Verification could not load. Try again.", "error");
+          },
+        });
+      };
+
+      const resetVerification = (message = "") => {
+        if (verificationExpiryTimer) clearTimeout(verificationExpiryTimer);
+        verificationExpiryTimer = null;
+        verificationProof = "";
+        verificationExpiresAt = 0;
+        turnstileToken = "";
+        isVerificationPending = false;
+        clearStoredVerification();
+        removeTurnstileWidget();
+        updateVerifiedAccess();
+        renderTurnstile();
+        if (message) setVerificationStatus(message, "error");
+      };
+
+      const completeVerification = async () => {
+        if (!BOT_VERIFICATION_ENABLED || isVerified || isVerificationPending || !turnstileToken) return;
+        if (!client) {
+          setVerificationStatus("Verification service is unavailable.", "error");
+          return;
+        }
+
+        isVerificationPending = true;
+        updateVerifiedAccess();
+
+        try {
+          const metadata = getVisitorMetadata();
+          const { data, error } = await withTimeout(
+            client.functions.invoke("submit-drop-verified", {
+              body: {
+                mode: "verify",
+                clientId: getClientId(),
+                turnstileToken,
+                path: window.location.pathname || "/",
+                userAgent: metadata.p_user_agent,
+                timezone: metadata.p_timezone,
+                screenSize: metadata.p_screen_size,
+                platform: metadata.p_platform,
+                referrer: metadata.p_referrer,
+              },
+            }),
+            12_000,
+          );
+
+          if (error) throw error;
+          const expiresAt = Date.parse(data?.expiresAt || "");
+          if (!data?.ok || typeof data?.verificationProof !== "string" || !Number.isFinite(expiresAt)) {
+            throw new Error(data?.message || "Verification failed.");
+          }
+
+          verificationProof = data.verificationProof;
+          verificationExpiresAt = expiresAt;
+          turnstileToken = "";
+          storeVerification();
+          scheduleVerificationExpiry();
+          removeTurnstileWidget();
+        } catch (error) {
+          console.error("Server verification failed:", error);
+          resetVerification("Verification failed. Please try again.");
+        } finally {
+          isVerificationPending = false;
+          updateVerifiedAccess();
+        }
+      };
+
+      const isVerificationFailure = (data, error) =>
+        error?.context?.status === 403 || data?.message === "Verification expired.";
+
       const submitDrop = async (message) => {
         const payload = {
-          mode: "submit",
+          mode: "submit-verified",
           message,
           clientId: getClientId(),
+          verificationProof,
         };
 
         if (isLocalPreview) {
           return { data: { ok: true, preview: true }, error: null };
         }
 
-        return client.functions.invoke("submit-drop-verified", { body: payload });
+        const response = await client.functions.invoke("submit-drop-verified", { body: payload });
+        if (isVerificationFailure(response.data, response.error)) {
+          resetVerification("Your secure session expired. Verify once to continue.");
+        }
+        return response;
       };
+
+      window.onTurnstileLoaded = renderTurnstile;
 
       const showBulletinPhoto = (nextIndex) => {
         if (!bulletinPhotos.length) return;
@@ -1856,8 +2141,9 @@
 
       const updateDropWindowState = () => {
         dropWindowClosed = false;
-        input.disabled = dropWindowClosed || isSending;
-        sendButton.disabled = dropWindowClosed || isSending;
+        const accessLocked = BOT_VERIFICATION_ENABLED && !isVerified;
+        input.disabled = accessLocked || dropWindowClosed || isSending;
+        sendButton.disabled = accessLocked || dropWindowClosed || isSending;
         panel.classList.toggle("is-offline", dropWindowClosed);
         consoleShell.classList.toggle("is-offline", dropWindowClosed);
         if (feedback.dataset.source === "curfew") {
@@ -1960,36 +2246,6 @@
           p_platform: navigator.userAgentData?.platform || navigator.platform || "",
           p_referrer: document.referrer || "",
         };
-      };
-
-      const recordVisitor = async () => {
-        if (!client || isLocalPreview || isLikelyAutomatedClient || hasRecordedVisitor) return;
-
-        hasRecordedVisitor = true;
-        const metadata = getVisitorMetadata();
-
-        try {
-          const { data, error } = await withTimeout(
-            client.functions.invoke("submit-drop-verified", {
-              body: {
-                mode: "visit",
-                clientId: getClientId(),
-                path: window.location.pathname || "/",
-                userAgent: metadata.p_user_agent,
-                timezone: metadata.p_timezone,
-                screenSize: metadata.p_screen_size,
-                platform: metadata.p_platform,
-                referrer: metadata.p_referrer,
-              },
-            }),
-            9000,
-          );
-
-          if (error || !data?.ok) throw error || new Error(data?.message || "Visit was not recorded.");
-        } catch (error) {
-          hasRecordedVisitor = false;
-          console.error("Visit recording failed:", error);
-        }
       };
 
       const setKeypadStatus = (message, type = "") => {
@@ -2247,6 +2503,12 @@
       keypadSubmit.addEventListener("click", async () => {
         const expression = keypadDisplay.dataset.expression || "";
 
+        if (BOT_VERIFICATION_ENABLED && !isVerified) {
+          setKeypadStatus("Complete verification first.", "is-error");
+          renderTurnstile();
+          return;
+        }
+
         if (!expression) {
           setKeypadStatus("Enter a calculation.", "is-error");
           return;
@@ -2331,16 +2593,22 @@
       setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       scheduleTerminalLog();
       updateCaret();
-      if (!isLocalPreview && !isLikelyAutomatedClient) {
-        initPresence();
-        void recordVisitor();
-      }
+      restoreVerification();
+      scheduleVerificationExpiry();
+      updateVerifiedAccess();
+      renderTurnstile();
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         updateDropWindowState();
         if (dropWindowClosed) return;
+
+        if (BOT_VERIFICATION_ENABLED && !isVerified) {
+          setFeedback("Complete verification first.", "is-error");
+          renderTurnstile();
+          return;
+        }
 
         const value = input.value.trim();
         const issue = validate(value);
@@ -2405,5 +2673,6 @@
         }
       });
     </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=onTurnstileLoaded" async defer></script>
   </body>
 </html>
