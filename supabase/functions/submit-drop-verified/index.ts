@@ -7,7 +7,7 @@ const allowedOrigins = new Set([
   "https://dropmmssgg.uk",
   "https://www.dropmmssgg.uk",
 ]);
-const sessionLifetimeMs = 15 * 60 * 1000;
+const sessionLifetimeMs = 2 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -174,12 +174,13 @@ const createVerificationProof = async (
 
 const verifyVerificationProof = async (
   proof: string,
-  clientId: string,
   turnstileSecret: string,
 ) => {
-  if (!proof || proof.length > 4096) return false;
+  if (!proof || proof.length > 4096) return { ok: false as const, reason: "missing" };
   const [payload, encodedSignature, extra] = proof.split(".");
-  if (!payload || !encodedSignature || extra) return false;
+  if (!payload || !encodedSignature || extra) {
+    return { ok: false as const, reason: "format" };
+  }
 
   try {
     const key = await getSessionKey(turnstileSecret);
@@ -189,15 +190,17 @@ const verifyVerificationProof = async (
       fromBase64Url(encodedSignature),
       encoder.encode(payload),
     );
-    if (!signatureIsValid) return false;
+    if (!signatureIsValid) return { ok: false as const, reason: "signature" };
 
     const data = JSON.parse(decoder.decode(fromBase64Url(payload)));
-    return data?.version === 1 &&
-      data?.clientId === clientId &&
-      Number.isFinite(data?.expiresAt) &&
-      data.expiresAt > Date.now();
+    if (data?.version !== 1 || !isUuid(data?.clientId) || !Number.isFinite(data?.expiresAt)) {
+      return { ok: false as const, reason: "payload" };
+    }
+    if (data.expiresAt <= Date.now()) return { ok: false as const, reason: "expired" };
+
+    return { ok: true as const, clientId: data.clientId as string };
   } catch {
-    return false;
+    return { ok: false as const, reason: "malformed" };
   }
 };
 
@@ -286,7 +289,7 @@ serve(async (request) => {
 
   const mode = readText(body.mode, 32);
   const clientId = readText(body.clientId, 64);
-  if (!isUuid(clientId)) {
+  if (mode === "verify" && !isUuid(clientId)) {
     return json(request, { ok: false, message: "Invalid client." }, 400);
   }
 
@@ -339,13 +342,17 @@ serve(async (request) => {
 
   if (mode === "submit-verified") {
     const verificationProof = readText(body.verificationProof, 4097);
-    const proofIsValid = await verifyVerificationProof(
+    const proofResult = await verifyVerificationProof(
       verificationProof,
-      clientId,
       turnstileSecret,
     );
-    if (!proofIsValid) {
-      return json(request, { ok: false, message: "Verification expired." }, 403);
+    if (!proofResult.ok) {
+      console.warn("verification proof rejected", { reason: proofResult.reason });
+      return json(request, {
+        ok: false,
+        code: "verification_expired",
+        message: "Verification expired.",
+      }, 403);
     }
 
     const message = readText(body.message, 501);
@@ -355,7 +362,7 @@ serve(async (request) => {
 
     const { data, error } = await supabase.rpc("submit_drop_v2", {
       p_message: message,
-      p_client_id: clientId,
+      p_client_id: proofResult.clientId,
       p_ip_address: remoteIp || null,
       p_ip_hash: remoteIpHash || null,
     });
@@ -364,7 +371,12 @@ serve(async (request) => {
       return json(request, { ok: false, message: "Capture failed." }, 500);
     }
 
-    return json(request, data || { ok: true });
+    const session = await createVerificationProof(proofResult.clientId, turnstileSecret);
+    return json(request, {
+      ...(data || { ok: true }),
+      verificationProof: session.proof,
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    });
   }
 
   return json(request, { ok: false, message: "Invalid request mode." }, 400);

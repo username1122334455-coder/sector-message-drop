@@ -1949,6 +1949,19 @@
         }, Math.max(verificationExpiresAt - Date.now(), 1000));
       };
 
+      const applyVerificationSession = (data) => {
+        const expiresAt = Date.parse(data?.expiresAt || "");
+        if (typeof data?.verificationProof !== "string" || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+          return false;
+        }
+
+        verificationProof = data.verificationProof;
+        verificationExpiresAt = expiresAt;
+        storeVerification();
+        scheduleVerificationExpiry();
+        return true;
+      };
+
       const renderTurnstile = () => {
         if (!BOT_VERIFICATION_ENABLED || isVerified || !turnstileWidget) return;
         if (!turnstileSiteKey) {
@@ -2028,16 +2041,11 @@
           );
 
           if (error) throw error;
-          const expiresAt = Date.parse(data?.expiresAt || "");
-          if (!data?.ok || typeof data?.verificationProof !== "string" || !Number.isFinite(expiresAt)) {
+          if (!data?.ok || !applyVerificationSession(data)) {
             throw new Error(data?.message || "Verification failed.");
           }
 
-          verificationProof = data.verificationProof;
-          verificationExpiresAt = expiresAt;
           turnstileToken = "";
-          storeVerification();
-          scheduleVerificationExpiry();
           removeTurnstileWidget();
         } catch (error) {
           console.error("Server verification failed:", error);
@@ -2048,14 +2056,23 @@
         }
       };
 
-      const isVerificationFailure = (data, error) =>
-        error?.context?.status === 403 || data?.message === "Verification expired.";
+      const readFunctionError = async (data, error) => {
+        if (data && typeof data === "object") return data;
+
+        const response = error?.context;
+        if (!response || typeof response.clone !== "function") return null;
+
+        try {
+          return await response.clone().json();
+        } catch {
+          return null;
+        }
+      };
 
       const submitDrop = async (message) => {
         const payload = {
           mode: "submit-verified",
           message,
-          clientId: getClientId(),
           verificationProof,
         };
 
@@ -2064,8 +2081,11 @@
         }
 
         const response = await client.functions.invoke("submit-drop-verified", { body: payload });
-        if (isVerificationFailure(response.data, response.error)) {
+        const errorBody = await readFunctionError(response.data, response.error);
+        if (errorBody?.code === "verification_expired") {
           resetVerification("Your secure session expired. Verify once to continue.");
+        } else if (!response.error && response.data?.ok) {
+          applyVerificationSession(response.data);
         }
         return response;
       };
