@@ -2223,6 +2223,7 @@
             if (!verificationProof) setVerificationStatus("Verification could not load. Try again.", "error");
           },
         });
+        setVerificationStatus("Complete the Cloudflare check to continue.");
       };
 
       const resetVerification = (message = "") => {
