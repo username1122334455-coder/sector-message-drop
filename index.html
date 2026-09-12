@@ -1893,17 +1893,9 @@
             <span class="verification-gate__mark" aria-hidden="true">✦</span>
             <div class="verification-gate__brand-copy">
               <p class="verification-gate__brand-name">DropMMSSGG</p>
-              <p class="verification-gate__brand-domain">dropmmssgg.uk</p>
             </div>
           </div>
-          <p class="verification-gate__eyebrow">Verification required</p>
-          <h2>Confirm access</h2>
-          <p class="verification-gate__copy">Complete one Cloudflare check to open the private message drop. You will stay verified for up to two hours while you use this tab.</p>
-          <div class="verification-gate__trust" aria-label="Verification details">
-            <span>One check</span>
-            <span>2-hour session</span>
-            <span>Bot protected</span>
-          </div>
+          <h2>Verify to enter</h2>
           <div class="turnstile-widget" id="turnstileWidget"></div>
           <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading secure verification...</p>
         </div>
@@ -1958,7 +1950,7 @@
               required
             ></textarea>
             <span class="typing-caret" id="typingCaret" aria-hidden="true"></span>
-            <button id="sendButton" type="submit">SEND</button>
+            <button id="sendButton" type="submit">Send message</button>
           </form>
 
           <p class="terminal-log" id="terminalLog" aria-hidden="true"></p>
@@ -1986,14 +1978,14 @@
               <button type="button" data-calculator-value="2">2</button>
               <button type="button" data-calculator-value="3">3</button>
               <button class="keypad__key--operator" type="button" data-calculator-value="-">−</button>
-              <button class="keypad__key--utility" id="keypadClear" type="button">C</button>
+              <button class="keypad__key--utility" id="keypadClear" type="button" aria-label="Clear calculator">C</button>
               <button type="button" data-calculator-value="0">0</button>
               <button type="button" data-calculator-value=".">.</button>
               <button class="keypad__key--operator" type="button" data-calculator-value="+">+</button>
             </div>
             <div class="keypad__grid keypad__grid--actions">
-              <button class="keypad__key--utility" id="keypadDelete" type="button">DEL</button>
-              <button class="keypad__submit" id="keypadSubmit" type="button">=</button>
+              <button class="keypad__key--utility" id="keypadDelete" type="button" aria-label="Delete last digit">DEL</button>
+              <button class="keypad__submit" id="keypadSubmit" type="button" aria-label="Calculate">=</button>
             </div>
             <p class="keypad__status" id="keypadStatus" role="status" aria-live="polite"></p>
           </section>
