@@ -1,0 +1,24 @@
+{
+  "name": "dropmmssgg-static-performance",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build-static.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "preview": "wrangler dev --local --ip 127.0.0.1 --port 8788",
+    "preview:baseline": "node scripts/preview-baseline.mjs",
+    "check:deploy": "wrangler deploy --dry-run --no-autoconfig",
+    "test:http": "node scripts/test-static-http.mjs",
+    "check:preservation": "node scripts/check-preservation.mjs"
+  },
+  "devDependencies": {
+    "acorn": "8.18.0",
+    "postcss": "8.5.28",
+    "terser": "5.51.2",
+    "wrangler": "4.131.1"
+  }
+}

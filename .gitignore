@@ -6,3 +6,12 @@ coverage.json
 .env
 scheduled-assets/
 .DS_Store
+
+# Generated performance builds and local Cloudflare state; never publish these.
+dist/
+.performance/
+.build-*/
+.wrangler/
+.dev.vars*
+.env.*
+worker-configuration.d.ts

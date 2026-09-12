@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dropmmssgg-static",
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": ["nodejs_compat"],
+  // Static-only delivery: Supabase and Turnstile continue doing their existing jobs.
+  // No Worker handler, database bindings, secrets, DNS routes or public preview.
+  "workers_dev": false,
+  "preview_urls": false,
+  "build": {
+    "command": "npm run build",
+    "watch_dir": ["index.html", "robots.txt", "assets", "scripts"]
+  },
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 0.1 }
+  }
+}
