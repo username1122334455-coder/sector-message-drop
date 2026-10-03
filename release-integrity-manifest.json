@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "productionCommit": "f80c4a45d024b2ac1aa5a42917f5fbaef29fb0b1",
+  "runtimeCommit": "3bfe525fec7c676f3b65070e5c6a41627632eab1",
+  "automationChanges": {
+    "automation/process-runner.mjs": {
+      "baseSha256": null,
+      "approvedSha256": "1c2aead832371ad7cbc041c4910a90caf221595c6ae04babcea7aeb1270d8133"
+    },
+    "automation/publication-verifier.mjs": {
+      "baseSha256": null,
+      "approvedSha256": "acd34f92f74ac508a15126ea23771fde58375f4287592d08f721544e2a207553"
+    },
+    "automation/publish-bulletin.mjs": {
+      "baseSha256": "be360511cf483c3112b80b3f0d3135d4604f6433e6fc79eb450aa3642ffe2ad9",
+      "approvedSha256": "957d68ccb57cf6a5eeabeb357ba6a80ddad23c07491f9866555dd3da1ce5ab25"
+    },
+    "automation/rotation-controller.mjs": {
+      "baseSha256": null,
+      "approvedSha256": "264bb0a00932eb46d76e78754fff43ab26f09eb2269b78ea3bd42e30c0559f7e"
+    },
+    "automation/rotation-io.mjs": {
+      "baseSha256": null,
+      "approvedSha256": "905f8411e3c187b0178d99bc5c965bb12e26c3e773057b215e7b651d7cbdf07d"
+    },
+    "automation/setup-rotation-token.mjs": {
+      "baseSha256": null,
+      "approvedSha256": "c48938cee1f60b50d99c92f90333ad1bf813fae2612875f2822658a5a00c2fb5"
+    },
+    "automation/sql/rotation-queue.sql": {
+      "baseSha256": null,
+      "approvedSha256": "40f065b70fe4f3cdef0e0ceed7898c5e69832a1789217d4a8cc83967984eafc1"
+    },
+    "automation/visitor-watcher.mjs": {
+      "baseSha256": "b73c0553b87596cf5f43f239f9fa49d8551519434a6dc67f99c72391219fa220",
+      "approvedSha256": "1e40970263e6aae5c2cd85df145cb3137129e376ad7ec1371ba02eb3a77b43d6"
+    }
+  }
+}

@@ -13,7 +13,9 @@
     "preview:baseline": "node scripts/preview-baseline.mjs",
     "check:deploy": "wrangler deploy --dry-run --no-autoconfig",
     "test:http": "node scripts/test-static-http.mjs",
-    "check:preservation": "node scripts/check-preservation.mjs"
+    "check:preservation": "node scripts/check-preservation.mjs",
+    "check:runtime-parity": "node scripts/check-runtime-parity.mjs",
+    "check:release": "npm test && npm run check:preservation && npm run check:runtime-parity && git diff --check"
   },
   "devDependencies": {
     "acorn": "8.18.0",
