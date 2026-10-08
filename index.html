@@ -2515,6 +2515,12 @@
         return match?.reply || "";
       };
 
+      missionAlert.addEventListener("animationend", (event) => {
+        if (event.animationName !== "alertPop") return;
+        missionAlert.classList.remove("is-visible");
+        missionAlert.setAttribute("aria-hidden", "true");
+      });
+
       const showMissionAlert = (reply) => {
         const now = Date.now();
 
