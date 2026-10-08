@@ -1,6 +1,5 @@
-import { lstat, open, readFile, readdir, unlink } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { normalizeState, processNextEvent } from './rotation-controller.mjs';
 import { atomicJson, makeRotationRpc, readRotationToken } from './rotation-io.mjs';
 import { runProcess } from './process-runner.mjs';
+import { acquireWatcherLock, releaseWatcherLock } from './watcher-lock.mjs';
 
 const automationDir = path.dirname(fileURLToPath(import.meta.url));
 const runtimeDir = path.resolve(automationDir, '..');
@@ -20,7 +20,6 @@ const publisher = path.join(automationDir, 'publish-bulletin.mjs');
 const supabaseUrl = 'https://hrsrjfpygekjyuwibsia.supabase.co';
 const publishableKey = 'sb_publishable_Sl962RuGBx2L5aWFmeeCUQ_t-p0YEHW';
 const stop = new AbortController();
-const lockNonce = randomBytes(16).toString('hex');
 const log = message => console.log(`${new Date().toISOString()} ${message}`);
 const folderPath = number => {
   const current = path.join(updateRoot, `Folder${number}`);
@@ -39,27 +38,8 @@ async function folderStatus(number) {
   } catch { return { ok: false }; }
 }
 
-async function acquireLock() {
-  try {
-    const handle = await open(lockPath, 'wx', 0o600);
-    try { await handle.writeFile(JSON.stringify({ pid: process.pid, nonce: lockNonce })); await handle.sync(); }
-    finally { await handle.close(); }
-    return;
-  } catch (error) { if (error.code !== 'EEXIST') throw error; }
-  const info = await lstat(lockPath);
-  if (!info.isFile() || info.isSymbolicLink() || info.uid !== process.getuid() || (info.mode & 0o077) !== 0) throw new Error('Unsafe watcher lock');
-  const lock = JSON.parse(await readFile(lockPath, 'utf8'));
-  if (!Number.isSafeInteger(lock.pid) || lock.pid < 2) throw new Error('Invalid watcher lock; reconciliation required');
-  try { process.kill(lock.pid, 0); throw new Error('Another watcher already owns the rotation lock'); }
-  catch (error) { if (error.code !== 'ESRCH') throw error; }
-  const stillStale = JSON.parse(await readFile(lockPath, 'utf8'));
-  if (stillStale.pid !== lock.pid || stillStale.nonce !== lock.nonce) throw new Error('Watcher lock changed during recovery');
-  await unlink(lockPath);
-  return acquireLock();
-}
-
 async function main() {
-  await acquireLock();
+  const lock = await acquireWatcherLock(lockPath);
   let phase = 'starting'; let lastError = null; let lastQueueCheck = null; let state;
   let healthWrites = Promise.resolve();
   const heartbeat = () => {
@@ -124,8 +104,7 @@ async function main() {
     clearInterval(interval);
     phase = 'stopped';
     await heartbeat().catch(() => {});
-    const owned = JSON.parse(await readFile(lockPath, 'utf8'));
-    if (owned.pid === process.pid && owned.nonce === lockNonce) await unlink(lockPath);
+    await releaseWatcherLock(lock);
   }
 }
 

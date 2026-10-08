@@ -1883,6 +1883,117 @@
         }
       }
 
+      /* REFINED_UI_START: additive polish; original theme rules retained. */
+      .panel {
+        gap: 10px;
+      }
+
+      .mission-alert[aria-hidden="true"] {
+        display: none;
+      }
+
+      .mission-alert {
+        width: 100%;
+      }
+
+      .appbar__domain {
+        color: #173d43;
+      }
+
+      textarea::placeholder {
+        color: #486d71;
+      }
+
+      #messageInput::placeholder {
+        font-size: 0.875rem;
+      }
+
+      #messageInput {
+        padding: 12px;
+        font-size: 1rem;
+        line-height: 1.5;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        text-transform: none;
+      }
+
+      .panel.is-active .typing-caret {
+        display: none;
+      }
+
+      #sendButton {
+        flex-basis: 144px;
+        font-size: 1rem;
+        line-height: 1.2;
+      }
+
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid #173d43;
+        outline-offset: 4px;
+      }
+
+      body.theme-night button:focus-visible,
+      body.theme-night a:focus-visible,
+      body.theme-night input:focus-visible,
+      body.theme-night textarea:focus-visible {
+        outline-color: #fff2b8;
+      }
+
+      body.theme-night .message-count[data-near-limit="true"],
+      body.theme-night .keypad__status.is-error,
+      body.theme-night .feedback.is-error {
+        color: #ffb4a6;
+      }
+
+      .verification-gate {
+        overflow-y: auto;
+        align-items: safe center;
+      }
+
+      .verification-gate__card {
+        min-width: 0;
+      }
+
+      .turnstile-widget {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+
+      @media (max-width: 520px) {
+        .typing-caret {
+          display: none;
+        }
+
+        #sendButton {
+          flex: 0 0 54px;
+          height: 54px;
+          font-size: 1rem;
+        }
+
+        .verification-gate__card {
+          padding: 14px 8px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition: none !important;
+        }
+
+        .typing-caret {
+          animation: none;
+        }
+
+        .console {
+          transform: none;
+        }
+      }
+      /* REFINED_UI_END */
     </style>
   </head>
   <body class="verification-locked">
@@ -2362,7 +2473,7 @@
       const updateMilitaryClock = () => {
         const now = new Date();
         militaryClock.dateTime = now.toISOString();
-        const hour = String((now.getHours() % 12) || 12);
+        const hour = String(now.getHours()).padStart(2, "0");
         const minute = String(now.getMinutes()).padStart(2, "0");
         militaryClock.textContent = `${hour}:${minute}`;
       };
@@ -2828,7 +2939,6 @@
       updateCalculator();
       showBulletinPhoto(0);
       startBulletinSlideshow();
-      setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);
       scheduleTerminalLog();
       updateCaret();
       restoreVerification();
