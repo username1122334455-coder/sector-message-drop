@@ -13,6 +13,8 @@ export const defaultManifestName = 'release-integrity-manifest.json';
 // never generates or updates it. During staging, runtimeCommit is omitted and
 // automationChanges records each base-to-approved hash pair. After publication,
 // runtimeCommit is added while those pairs remain as durable review evidence.
+// uiRevision can stage a separately reviewed whole-document UI update on top of
+// already finalized automation; its runtimeCommit advances after publication.
 
 const commitPattern = /^[0-9a-f]{40}$/;
 const digestPattern = /^[0-9a-f]{64}$/;
@@ -79,7 +81,7 @@ export async function loadReleaseManifest({
   }
 
   requireCondition(parsed && typeof parsed === 'object' && !Array.isArray(parsed), 'release integrity manifest must be an object');
-  const allowedKeys = new Set(['schemaVersion', 'productionCommit', 'runtimeCommit', 'automationChanges']);
+  const allowedKeys = new Set(['schemaVersion', 'productionCommit', 'runtimeCommit', 'automationChanges', 'uiRevision']);
   const unexpectedKeys = Object.keys(parsed).filter((key) => !allowedKeys.has(key));
   requireCondition(unexpectedKeys.length === 0, `release integrity manifest has unsupported fields: ${unexpectedKeys.join(', ')}`);
   requireCondition(parsed.schemaVersion === 1, 'release integrity manifest schemaVersion must be 1');
@@ -92,6 +94,19 @@ export async function loadReleaseManifest({
     parsed.automationChanges && typeof parsed.automationChanges === 'object' && !Array.isArray(parsed.automationChanges),
     'release integrity manifest automationChanges must be an object',
   );
+  let uiRevision = null;
+  if (parsed.uiRevision !== undefined) {
+    const entry = parsed.uiRevision;
+    requireCondition(entry && typeof entry === 'object' && !Array.isArray(entry), 'uiRevision must be an object');
+    requireCondition(
+      JSON.stringify(Object.keys(entry).sort()) === JSON.stringify(['approvedSha256', 'baseSha256']),
+      'uiRevision must contain only baseSha256 and approvedSha256',
+    );
+    requireCondition(typeof entry.baseSha256 === 'string' && digestPattern.test(entry.baseSha256), 'uiRevision baseSha256 is invalid');
+    requireCondition(typeof entry.approvedSha256 === 'string' && digestPattern.test(entry.approvedSha256), 'uiRevision approvedSha256 is invalid');
+    requireCondition(entry.baseSha256 !== entry.approvedSha256, 'redundant UI authorization is not allowed');
+    uiRevision = { baseSha256: entry.baseSha256, approvedSha256: entry.approvedSha256 };
+  }
 
   const automationChanges = new Map();
   for (const [file, entry] of Object.entries(parsed.automationChanges)) {
@@ -119,6 +134,7 @@ export async function loadReleaseManifest({
     productionCommit: parsed.productionCommit,
     runtimeCommit: parsed.runtimeCommit || null,
     automationChanges,
+    uiRevision,
   };
 }
 
@@ -190,6 +206,38 @@ export const normalizeBulletin = (source, label) => {
   return source
     .replace(mediaBlockPattern, '<!-- BULLETIN_MEDIA_REVIEWED_SLOT -->')
     .replace(messageBlockPattern, '<p class="bulletin-board__message">[REVIEWED_BULLETIN_SLOT]</p>');
+};
+
+// UI approval covers the whole document, excluding only the two established
+// rotating bulletin slots. The base hash is anchored to the immutable entry
+// release; a manifest cannot silently nominate a different starting template.
+export const indexRevision = (source, approvedIndex, release, label) => {
+  const normalized = normalizeBulletin(source, label);
+  const approvedEntry = normalizeBulletin(approvedIndex, 'approved entry index');
+  if (!release.uiRevision) {
+    requireCondition(normalized === approvedEntry, `${label} changes structure outside the approved bulletin regions`);
+    return 'base';
+  }
+  requireCondition(
+    release.uiRevision.baseSha256 === sha256(approvedEntry),
+    'uiRevision base hash does not match the approved entry commit',
+  );
+  const digest = sha256(normalized);
+  if (digest === release.uiRevision.baseSha256) return 'base';
+  if (digest === release.uiRevision.approvedSha256) return 'approved';
+  throw new Error(`${label} changes structure outside the approved bulletin regions and reviewed UI revision`);
+};
+
+export const assertSameBulletin = (left, right) => {
+  // normalizeBulletin validates uniqueness before extracting the exact bytes.
+  normalizeBulletin(left, 'candidate index');
+  normalizeBulletin(right, 'reviewed snapshot index');
+  for (const pattern of [mediaBlockPattern, messageBlockPattern]) {
+    requireCondition(
+      [...left.matchAll(pattern)][0][0] === [...right.matchAll(pattern)][0][0],
+      'candidate bulletin is stale relative to the reviewed production snapshot',
+    );
+  }
 };
 
 export async function compareWorkingDirectoryToCommit(root, commit, directory) {
@@ -273,10 +321,7 @@ const verifyReleaseLineage = (root, release, baseline, entryCommit) => {
   }
   for (const [label, commit] of indexCommits) {
     const source = gitFile(root, commit, 'index.html').toString('utf8');
-    requireCondition(
-      normalizeBulletin(source, label) === normalizeBulletin(approvedIndex, 'approved entry index'),
-      `${label} changes structure outside the approved bulletin regions`,
-    );
+    indexRevision(source, approvedIndex, release, label);
   }
 };
 
@@ -297,14 +342,21 @@ export async function runPreservationCheck({
   const approvedIndex = gitFile(root, entryCommit, 'index.html').toString('utf8');
   const currentIndexBuffer = await readWorkingFile(root, 'index.html');
   requireCondition(currentIndexBuffer, 'candidate index.html is missing');
-  requireCondition(
-    normalizeBulletin(currentIndexBuffer.toString('utf8'), 'candidate index') === normalizeBulletin(approvedIndex, 'approved entry index'),
-    'candidate index changes structure outside the approved bulletin regions',
-  );
-  requireCondition(
-    currentIndexBuffer.equals(gitFile(root, snapshotCommit, 'index.html')),
-    'candidate index.html is stale relative to the reviewed production snapshot',
-  );
+  const currentIndex = currentIndexBuffer.toString('utf8');
+  const candidateRevision = indexRevision(currentIndex, approvedIndex, release, 'candidate index');
+  requireCondition(!release.uiRevision || candidateRevision === 'approved', 'candidate index is missing the reviewed UI revision');
+  const snapshotIndexBuffer = gitFile(root, snapshotCommit, 'index.html');
+  const snapshotIndex = snapshotIndexBuffer.toString('utf8');
+  const snapshotRevision = indexRevision(snapshotIndex, approvedIndex, release, 'reviewed snapshot index');
+  const uiPending = Boolean(release.uiRevision && snapshotRevision === 'base');
+  if (uiPending) {
+    assertSameBulletin(currentIndex, snapshotIndex);
+  } else {
+    requireCondition(
+      currentIndexBuffer.equals(snapshotIndexBuffer),
+      'candidate index.html is stale relative to the reviewed production snapshot',
+    );
+  }
 
   const assetCount = await compareWorkingDirectoryToCommit(root, snapshotCommit, 'assets');
   const candidateAutomation = await workingTreeFiles(root, 'automation');
@@ -338,10 +390,14 @@ export async function runPreservationCheck({
     approvedEntryCommit: entryCommit,
     productionCommit: release.productionCommit,
     runtimeCommit: release.runtimeCommit,
-    releasePhase: release.runtimeCommit ? 'finalized' : 'staged',
+    releasePhase: release.runtimeCommit && !uiPending ? 'finalized' : 'staged',
     immutableOriginalFilesUnchanged,
-    entryStructure: 'approved outside exact bulletin slots',
-    runtimeContent: { index: 'exact', assets: assetCount },
+    entryStructure: release.uiRevision ? 'reviewed whole-document UI revision outside exact bulletin slots' : 'approved outside exact bulletin slots',
+    runtimeContent: { index: uiPending ? 'reviewed-ui-staged' : 'exact', assets: assetCount },
+    ui: {
+      status: uiPending ? 'pending-publication' : release.uiRevision ? 'published-approved' : 'exact-unchanged',
+      exact: !uiPending,
+    },
     automation,
   };
 }

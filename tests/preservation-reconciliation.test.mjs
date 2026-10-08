@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { runPreservationCheck, sha256 } from '../scripts/check-preservation.mjs';
+import { loadReleaseManifest, normalizeBulletin, runPreservationCheck, sha256 } from '../scripts/check-preservation.mjs';
 import { runRuntimeParityCheck } from '../scripts/check-runtime-parity.mjs';
 
 const git = (root, args) => execFileSync('git', args, {
@@ -207,4 +207,152 @@ test('runtime parity rejects a mixed partial automation publication', async (t) 
     }),
     /partial publication; refusing mixed reviewed states/,
   );
+});
+
+const uiPatch = '/* REFINED_UI_START */\nbutton:focus-visible { outline: 3px solid teal; }\n/* REFINED_UI_END */';
+const polishedPage = (source) => source
+  .replace('</style>', `${uiPatch}</style>`)
+  .replace('const application = true;', 'const application = true; const clock = "hour12";');
+
+async function approveUi(fixture, manifest = fixture.manifest) {
+  const indexPath = path.join(fixture.root, 'index.html');
+  const original = await readFile(indexPath, 'utf8');
+  const approved = polishedPage(original);
+  // Preserve all bytes, including the final newline, in the review digest.
+  const baseSource = execFileSync('git', ['show', `${fixture.entryCommit}:index.html`], { cwd: fixture.root }).toString('utf8');
+  const uiRevision = {
+    baseSha256: sha256(normalizeBulletin(baseSource, 'fixture entry')),
+    approvedSha256: sha256(normalizeBulletin(approved, 'fixture approved UI')),
+  };
+  await writeFile(indexPath, approved);
+  return { original, approved, manifest: { ...manifest, uiRevision } };
+}
+
+test('reviewed UI stages independently of already published automation', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const runtimeCommit = commitAll(fixture.root, 'publish automation first');
+  git(fixture.runtimeRoot, ['checkout', '--detach', runtimeCommit]);
+  const { manifest } = await approveUi(fixture, { ...fixture.manifest, runtimeCommit });
+
+  const preservation = await runPreservationCheck(preservationOptions(fixture, manifest));
+  assert.equal(preservation.releasePhase, 'staged');
+  assert.equal(preservation.runtimeContent.index, 'reviewed-ui-staged');
+  assert.deepEqual(preservation.ui, { status: 'pending-publication', exact: false });
+  const parity = await runRuntimeParityCheck({ ...preservationOptions(fixture, manifest), runtimeRoot: fixture.runtimeRoot });
+  assert.equal(parity.phase, 'staged');
+  assert.equal(parity.automation.status, 'published-approved');
+  assert.equal(parity.sourceContent.index, 'reviewed-ui-staged');
+  assert.deepEqual(parity.ui, { status: 'pending-publication', exact: false });
+});
+
+test('reviewed UI and automation can stage together without a runtimeCommit', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const { manifest } = await approveUi(fixture);
+  const parity = await runRuntimeParityCheck({ ...preservationOptions(fixture, manifest), runtimeRoot: fixture.runtimeRoot });
+  assert.equal(parity.ui.status, 'pending-publication');
+  assert.equal(parity.automation.status, 'pending-publication');
+});
+
+test('finalized UI requires exact reviewed runtime bytes and keeps review provenance', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const approvedUi = await approveUi(fixture);
+  const runtimeCommit = commitAll(fixture.root, 'publish reviewed UI and automation');
+  git(fixture.runtimeRoot, ['checkout', '--detach', runtimeCommit]);
+  const manifest = { ...approvedUi.manifest, runtimeCommit };
+  const preservation = await runPreservationCheck(preservationOptions(fixture, manifest));
+  assert.equal(preservation.runtimeContent.index, 'exact');
+  assert.deepEqual(preservation.ui, { status: 'published-approved', exact: true });
+  const parity = await runRuntimeParityCheck({ ...preservationOptions(fixture, manifest), runtimeRoot: fixture.runtimeRoot });
+  assert.equal(parity.phase, 'published');
+  assert.equal(parity.sourceContent.index, 'exact');
+
+  await writeFile(path.join(fixture.root, 'index.html'), approvedUi.approved.replace('Current bulletin', 'Different bulletin'));
+  await assert.rejects(runPreservationCheck(preservationOptions(fixture, manifest)), /stale relative to the reviewed production snapshot/);
+});
+
+test('UI approval rejects changed, missing, duplicate, and moved polish plus unrelated document drift', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const { original, approved, manifest } = await approveUi(fixture);
+  const variants = [
+    original,
+    approved.replace('3px solid teal', '4px solid teal'),
+    approved.replace(uiPatch, ''),
+    approved.replace(uiPatch, `${uiPatch}${uiPatch}`),
+    approved.replace(uiPatch, '').replace('<style>', `<style>${uiPatch}`),
+    approved.replace('const clock = "hour12"', 'const clock = "hour24"'),
+    approved.replace('<main>', '<main class="drift">'),
+    approved.replace('REFINED_UI_START', 'UNREVIEWED_UI_START'),
+  ];
+  for (const source of variants) {
+    await writeFile(path.join(fixture.root, 'index.html'), source);
+    await assert.rejects(runPreservationCheck(preservationOptions(fixture, manifest)), /missing the reviewed UI revision|outside the approved bulletin regions/);
+  }
+  await writeFile(path.join(fixture.root, 'index.html'), approved);
+  await assert.rejects(runPreservationCheck(preservationOptions(fixture)), /outside the approved bulletin regions/);
+});
+
+test('UI approval never allows stale or ambiguous rotating bulletin content', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const { approved, manifest } = await approveUi(fixture);
+  const indexPath = path.join(fixture.root, 'index.html');
+  for (const source of [approved.replace('Current bulletin', 'Stale bulletin'), approved.replace('?v=two', '?v=old')]) {
+    await writeFile(indexPath, source);
+    await assert.rejects(runPreservationCheck(preservationOptions(fixture, manifest)), /candidate bulletin is stale/);
+  }
+  await writeFile(indexPath, approved.replace('</main>', '<p class="bulletin-board__message">Duplicate</p></main>'));
+  await assert.rejects(runPreservationCheck(preservationOptions(fixture, manifest)), /exactly one bulletin message region/);
+});
+
+test('UI revision is strictly shaped and anchored to the approved entry release', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const { manifest } = await approveUi(fixture);
+  for (const uiRevision of [
+    null,
+    { ...manifest.uiRevision, extra: true },
+    { ...manifest.uiRevision, baseSha256: 'not-a-hash' },
+    { ...manifest.uiRevision, approvedSha256: 'not-a-hash' },
+    { ...manifest.uiRevision, approvedSha256: manifest.uiRevision.baseSha256 },
+  ]) {
+    await assert.rejects(loadReleaseManifest({ manifest: { ...manifest, uiRevision } }), /uiRevision|redundant UI/);
+  }
+  await assert.rejects(runPreservationCheck(preservationOptions(fixture, {
+    ...manifest,
+    uiRevision: { ...manifest.uiRevision, baseSha256: 'a'.repeat(64) },
+  })), /base hash does not match the approved entry commit/);
+});
+
+test('runtime UI publication requires explicit manifest finalization', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const automationCommit = commitAll(fixture.root, 'publish automation first');
+  const { manifest } = await approveUi(fixture, { ...fixture.manifest, runtimeCommit: automationCommit });
+  const uiCommit = commitAll(fixture.root, 'publish UI');
+  git(fixture.runtimeRoot, ['checkout', '--detach', uiCommit]);
+  await assert.rejects(runRuntimeParityCheck({
+    ...preservationOptions(fixture, manifest), runtimeRoot: fixture.runtimeRoot,
+  }), /UI is published but runtimeCommit is not finalized/);
+});
+
+test('runtime cannot roll back the UI after the reviewed release is finalized', async (t) => {
+  const fixture = await createFixture();
+  t.after(() => rm(fixture.parent, { recursive: true, force: true }));
+  const { original, approved, manifest: stagedManifest } = await approveUi(fixture);
+  const runtimeCommit = commitAll(fixture.root, 'publish UI and automation');
+  const manifest = { ...stagedManifest, runtimeCommit };
+  git(fixture.runtimeRoot, ['checkout', '--detach', runtimeCommit]);
+  await writeFile(path.join(fixture.runtimeRoot, 'index.html'), original);
+  const rollbackCommit = commitAll(fixture.runtimeRoot, 'rollback UI');
+  git(fixture.root, ['merge', '--ff-only', rollbackCommit]);
+  await writeFile(path.join(fixture.root, 'index.html'), approved);
+  commitAll(fixture.root, 'restore approved candidate UI');
+
+  await assert.rejects(runRuntimeParityCheck({
+    ...preservationOptions(fixture, manifest), runtimeRoot: fixture.runtimeRoot,
+  }), /runtime UI predates the finalized reviewed UI revision/);
 });

@@ -13,10 +13,29 @@ const section = (html, pattern) => {
   return match[0];
 };
 
-test('entry cleanup preserves stylesheet and application behavior byte-for-byte', () => {
-  for (const pattern of [/<style>[\s\S]*?<\/style>/, /<script>[\s\S]*?<\/script>/]) {
-    assert.ok(section(current, pattern) === section(original, pattern), 'application code changed');
-  }
+test('polish preserves the original stylesheet under one explicit additive region', () => {
+  const style = section(current, /<style>[\s\S]*?<\/style>/);
+  const patches = [...style.matchAll(/      \/\* REFINED_UI_START: additive polish; original theme rules retained\. \*\/[\s\S]*?      \/\* REFINED_UI_END \*\/\n/g)];
+  assert.equal(patches.length, 1);
+  assert.ok(style.replace(patches[0][0], '') === section(original, /<style>[\s\S]*?<\/style>/),
+    'original theme rules changed outside the reviewed additive polish');
+});
+
+test('application differs only by reviewed clock, presence and alert cleanup fixes', () => {
+  const oldScript = section(original, /<script>[\s\S]*?<\/script>/);
+  const expected = oldScript
+    .replace('const hour = String((now.getHours() % 12) || 12);', 'const hour = String(now.getHours()).padStart(2, "0");')
+    .replace('      setInterval(() => updateOnlineUsers(0), 60 * 60 * 1000);\n', '')
+    .replace('      const showMissionAlert = (reply) => {', `      missionAlert.addEventListener("animationend", (event) => {
+        if (event.animationName !== "alertPop") return;
+        missionAlert.classList.remove("is-visible");
+        missionAlert.setAttribute("aria-hidden", "true");
+      });
+
+      const showMissionAlert = (reply) => {`);
+  assert.notEqual(expected, oldScript);
+  assert.ok(section(current, /<script>[\s\S]*?<\/script>/) === expected,
+    'application behavior changed beyond the three reviewed fixes');
 });
 
 test('entry shows brand, verification and accessible status without redundant instructions', () => {

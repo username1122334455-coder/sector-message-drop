@@ -80,10 +80,14 @@ test('save failure after public delivery but before ACK safely retries the same 
   await assert.rejects(processNextEvent(state,f),/disk/);assert.equal(f.acknowledgements.length,0);
   state=normalizeState(f.saved.at(-1));f.save=save;await processNextEvent(state,f);assert.equal(state.currentFolder,3);
 });
-test('save failure after ACK recovers the checkpoint without processing another event',async()=>{
-  let state=initial();const f=fixture([event(1),event(2)]);const save=f.save;
+test('save failure after ACK retries only the final checkpoint before any other work',async()=>{
+  const state=initial();const f=fixture([event(1),event(2)]);const save=f.save;let polls=0;const events=f.events;
+  f.events=async()=>{polls++;return events();};
   f.save=async s=>{if(s.pending===null) throw new Error('disk');await save(s);};
   await assert.rejects(processNextEvent(state,f),/disk/);
-  state=normalizeState(f.saved.at(-1));f.save=save;await processNextEvent(state,f);
-  assert.equal(state.currentFolder,3);assert.deepEqual(f.publications.map(p=>p.event.event_id),['1','1']);
+  assert.equal(state.currentFolder,2);assert.equal(state.pending.phase,'published');assert.equal(polls,1);
+  f.save=save;await processNextEvent(state,f);
+  assert.equal(state.currentFolder,3);assert.equal(polls,1);
+  assert.deepEqual(f.publications.map(p=>p.event.event_id),['1']);
+  assert.deepEqual(f.acknowledgements,['1']);
 });

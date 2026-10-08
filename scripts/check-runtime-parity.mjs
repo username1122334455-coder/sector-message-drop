@@ -4,14 +4,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   approvedEntryCommit,
+  assertSameBulletin,
   dynamicBulletinAsset,
   git,
   gitFile,
   gitTreeFiles,
   historicalBaseline,
+  indexRevision,
   isAncestor,
   loadReleaseManifest,
-  normalizeBulletin,
   projectRoot,
   readWorkingFile,
   resolveCommit,
@@ -138,6 +139,7 @@ export async function runRuntimeParityCheck({
     schemaVersion: release.schemaVersion,
     productionCommit: release.productionCommit,
     ...(release.runtimeCommit ? { runtimeCommit: release.runtimeCommit } : {}),
+    ...(release.uiRevision ? { uiRevision: release.uiRevision } : {}),
     automationChanges: Object.fromEntries(release.automationChanges),
   }, baseline, entryCommit });
 
@@ -164,12 +166,21 @@ export async function runRuntimeParityCheck({
   const runtimeIndex = await readWorkingFile(liveRoot, 'index.html');
   const candidateIndex = await readWorkingFile(root, 'index.html');
   requireCondition(runtimeIndex && candidateIndex, 'candidate or runtime index.html is missing');
-  requireCondition(candidateIndex.equals(runtimeIndex), 'candidate index.html is stale relative to runtime');
   const approvedIndex = gitFile(root, entryCommit, 'index.html').toString('utf8');
-  requireCondition(
-    normalizeBulletin(runtimeIndex.toString('utf8'), 'runtime index') === normalizeBulletin(approvedIndex, 'approved entry index'),
-    'runtime index changes structure outside the approved bulletin regions',
-  );
+  const runtimeRevision = indexRevision(runtimeIndex.toString('utf8'), approvedIndex, release, 'runtime index');
+  const snapshotIndex = gitFile(root, release.runtimeCommit || release.productionCommit, 'index.html').toString('utf8');
+  const snapshotRevision = indexRevision(snapshotIndex, approvedIndex, release, 'reviewed snapshot index');
+  const uiPending = Boolean(release.uiRevision && runtimeRevision === 'base');
+  if (uiPending) {
+    requireCondition(snapshotRevision === 'base', 'runtime UI predates the finalized reviewed UI revision');
+    assertSameBulletin(candidateIndex.toString('utf8'), runtimeIndex.toString('utf8'));
+  } else {
+    requireCondition(
+      !release.uiRevision || snapshotRevision === 'approved',
+      'reviewed UI is published but runtimeCommit is not finalized in the manifest',
+    );
+    requireCondition(candidateIndex.equals(runtimeIndex), 'candidate index.html is stale relative to runtime');
+  }
   const assetCount = await compareDirectories(root, liveRoot, 'assets');
 
   const automation = compareRuntimeAutomation({
@@ -186,11 +197,15 @@ export async function runRuntimeParityCheck({
 
   return {
     ok: true,
-    phase: release.runtimeCommit ? 'published' : 'staged',
+    phase: release.runtimeCommit && !uiPending ? 'published' : 'staged',
     productionCommit: release.productionCommit,
     runtimeCommit: release.runtimeCommit,
     runtimeHead,
-    sourceContent: { index: 'exact', assets: assetCount },
+    sourceContent: { index: uiPending ? 'reviewed-ui-staged' : 'exact', assets: assetCount },
+    ui: {
+      status: uiPending ? 'pending-publication' : release.uiRevision ? 'published-approved' : 'exact-unchanged',
+      exact: !uiPending,
+    },
     automation,
   };
 }
