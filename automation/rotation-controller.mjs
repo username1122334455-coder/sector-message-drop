@@ -1,5 +1,7 @@
 // IDs are opaque decimal strings. Never compare visit timestamps as JS dates:
 // PostgreSQL records microseconds, and concurrent commits need not be ID-ordered.
+const finalizations = new WeakMap();
+
 export function validateEvent(event) {
   if (!event || typeof event.event_id !== 'string' || typeof event.visit_id !== 'string' ||
       !/^[1-9]\d*$/.test(event.event_id) || !/^[1-9]\d*$/.test(event.visit_id) ||
@@ -42,6 +44,13 @@ export function validatePublication(receipt, eventId) {
 // before publishing, then ACK only after public delivery has been confirmed.
 export async function processNextEvent(state, services) {
   const { events, ready, publish, acknowledge, save, now = () => new Date().toISOString() } = services;
+  const finalization = finalizations.get(state);
+  if (finalization) {
+    await save(finalization);
+    finalizations.delete(state);
+    Object.assign(state, finalization);
+    return { processed: true, folder: state.currentFolder, eventId: state.lastProcessedEvent };
+  }
   if (!state.pending) {
     const queue = await events();
     if (!Array.isArray(queue)) throw new Error('Invalid queue response');
@@ -66,11 +75,16 @@ export async function processNextEvent(state, services) {
   const acknowledged = await acknowledge(pending.event.event_id);
   if (acknowledged !== true) throw new Error('Rotation acknowledgement not confirmed');
 
-  state.currentFolder = pending.folder;
-  state.lastProcessedVisit = pending.event.created_at;
-  state.lastProcessedEvent = pending.event.event_id;
-  state.lastSuccessfulPublication = { ...publication, folder: pending.folder, eventId: pending.event.event_id };
-  state.pending = null;
-  await save(state);
+  const completed = {
+    ...state,
+    currentFolder: pending.folder,
+    lastProcessedVisit: pending.event.created_at,
+    lastProcessedEvent: pending.event.event_id,
+    lastSuccessfulPublication: { ...publication, folder: pending.folder, eventId: pending.event.event_id },
+    pending: null,
+  };
+  try { await save(completed); }
+  catch (error) { finalizations.set(state, completed); throw error; }
+  Object.assign(state, completed);
   return { processed: true, folder: state.currentFolder, eventId: state.lastProcessedEvent };
 }
