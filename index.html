@@ -1998,7 +1998,7 @@
   </head>
   <body class="verification-locked">
     <main class="console" aria-label="DropMMSSGG private message drop">
-      <section class="verification-gate" id="verificationGate" role="dialog" aria-modal="true" aria-label="Human verification">
+      <section class="verification-gate" id="verificationGate" role="dialog" aria-modal="true" aria-label="Human verification" tabindex="-1">
         <div class="verification-gate__card">
           <div class="verification-gate__brand">
             <span class="verification-gate__mark" aria-hidden="true">✦</span>
@@ -2011,7 +2011,7 @@
           <p class="verification-gate__status" id="verificationStatus" role="status" aria-live="polite">Loading secure verification...</p>
         </div>
       </section>
-      <section class="mission-grid" aria-hidden="true" inert>
+      <section class="mission-grid" aria-hidden="true" tabindex="-1" inert>
         <header class="appbar">
           <div class="appbar__identity">
             <p class="appbar__domain">dropmmssgg.uk</p>
@@ -2244,6 +2244,7 @@
       };
 
       const updateVerifiedAccess = () => {
+        const wasVerified = isVerified;
         const localPreviewIsVerified = Boolean(turnstileToken);
         const serverSessionIsVerified = Boolean(verificationProof) && verificationExpiresAt > Date.now();
         isVerified = !BOT_VERIFICATION_ENABLED || (
@@ -2268,6 +2269,10 @@
         }
 
         updateDropWindowState();
+        if (wasVerified !== isVerified) {
+          const focusTarget = isVerified ? (input.disabled ? missionGrid : input) : verificationGate;
+          focusTarget.focus({ preventScroll: true });
+        }
       };
 
       const scheduleVerificationExpiry = () => {
@@ -2534,16 +2539,28 @@
         missionAlert.classList.add("is-visible");
       };
 
-      const getClientId = () => {
-        let clientId = localStorage.getItem(clientIdKey);
-        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      let cachedClientId = "";
 
-        if (!clientId || !uuidPattern.test(clientId)) {
-          clientId = crypto.randomUUID();
-          localStorage.setItem(clientIdKey, clientId);
+      const getClientId = () => {
+        if (cachedClientId) return cachedClientId;
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        try {
+          const storedId = localStorage.getItem(clientIdKey);
+          if (uuidPattern.test(storedId || "")) {
+            cachedClientId = storedId;
+            return cachedClientId;
+          }
+        } catch {
+          // Keep one client identity in memory when browser storage is blocked.
         }
 
-        return clientId;
+        cachedClientId = crypto.randomUUID();
+        try {
+          localStorage.setItem(clientIdKey, cachedClientId);
+        } catch {
+          // A full or unavailable store must not prevent verification.
+        }
+        return cachedClientId;
       };
 
       const validate = (value) => {
@@ -2558,6 +2575,10 @@
       };
 
       const updateOnlineUsers = (count) => {
+        if (count === null) {
+          usersOnline.textContent = "ONLINE COUNT UNAVAILABLE";
+          return;
+        }
         const safeCount = Math.max(Number(count) || 0, 0);
         usersOnline.textContent = `${safeCount} ${safeCount === 1 ? "USER" : "USERS"} ONLINE`;
       };
@@ -2574,16 +2595,41 @@
         const channel = client.channel("drop-terminal-presence", {
           config: { presence: { key: getClientId() } },
         });
+        let subscriptionVersion = 0;
+        let subscribed = false;
+        let tracked = false;
+        let synced = false;
+        const showPresenceCount = () => {
+          if (!subscribed || !tracked || !synced) return;
+          const state = channel.presenceState();
+          const count = Object.values(state).reduce((total, entries) => total + entries.length, 0);
+          updateOnlineUsers(count);
+        };
 
+        updateOnlineUsers(null);
         channel
           .on("presence", { event: "sync" }, () => {
-            const state = channel.presenceState();
-            const count = Object.values(state).reduce((total, entries) => total + entries.length, 0);
-            updateOnlineUsers(count);
+            if (!subscribed) return;
+            synced = true;
+            showPresenceCount();
           })
           .subscribe(async (status) => {
-            if (status === "SUBSCRIBED") {
-              await channel.track({ online_at: new Date().toISOString() });
+            const version = ++subscriptionVersion;
+            subscribed = status === "SUBSCRIBED";
+            tracked = false;
+            synced = false;
+            updateOnlineUsers(null);
+            if (!subscribed) return;
+            try {
+              const result = await channel.track({ online_at: new Date().toISOString() });
+              if (version !== subscriptionVersion) return;
+              tracked = result === "ok";
+              if (!tracked) subscribed = false;
+              showPresenceCount();
+            } catch {
+              if (version !== subscriptionVersion) return;
+              subscribed = false;
+              updateOnlineUsers(null);
             }
           });
       };
@@ -2622,22 +2668,59 @@
 
       const evaluateCalculatorExpression = (expression) => {
         const source = expression.replace(/\s/g, "");
-        if (!source || !/^[0-9+\-*/().]+$/.test(source)) {
+        if (!source || !/^[0-9eE+\-*/().]+$/.test(source)) {
           throw new Error("Invalid calculation.");
         }
 
-        const tokens = source.match(/\d*\.?\d+|[()+\-*/]/g) || [];
+        const tokens = source.match(/(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+\-]?\d+)?|[()+\-*/]/g) || [];
         if (tokens.join("") !== source) {
           throw new Error("Invalid calculation.");
         }
 
         let index = 0;
+        const decimalParts = (value) => {
+          const [coefficient, exponent = "0"] = value.toString().split("e");
+          const places = Math.max((coefficient.split(".")[1]?.length || 0) - Number(exponent), 0);
+          if (places > 15) return null;
+          const scale = 10 ** places;
+          const integer = Math.round(value * scale);
+          return Number.isSafeInteger(integer) && integer / scale === value ? { integer, scale } : null;
+        };
+        const calculateDecimals = (left, right, operator) => {
+          const a = decimalParts(left);
+          const b = decimalParts(right);
+          if (a && b) {
+            let numerator;
+            let denominator;
+            if (operator === "+" || operator === "-") {
+              denominator = Math.max(a.scale, b.scale);
+              const scaledLeft = a.integer * (denominator / a.scale);
+              const scaledRight = b.integer * (denominator / b.scale);
+              if (Number.isSafeInteger(scaledLeft) && Number.isSafeInteger(scaledRight)) {
+                numerator = operator === "+" ? scaledLeft + scaledRight : scaledLeft - scaledRight;
+              }
+            } else if (operator === "*") {
+              numerator = a.integer * b.integer;
+              denominator = a.scale * b.scale;
+            } else {
+              numerator = a.integer * b.scale;
+              denominator = a.scale * b.integer;
+            }
+            // Correct decimal roundoff only when every scaled operand and result is exact.
+            if (Number.isSafeInteger(numerator) && Number.isSafeInteger(denominator) && denominator !== 0) {
+              return numerator / denominator;
+            }
+          }
+          if (operator === "+") return left + right;
+          if (operator === "-") return left - right;
+          return operator === "*" ? left * right : left / right;
+        };
         const parseExpression = () => {
           let value = parseTerm();
           while (tokens[index] === "+" || tokens[index] === "-") {
             const operator = tokens[index++];
             const right = parseTerm();
-            value = operator === "+" ? value + right : value - right;
+            value = calculateDecimals(value, right, operator);
           }
           return value;
         };
@@ -2650,7 +2733,7 @@
             if (operator === "/" && right === 0) {
               throw new Error("Cannot divide by zero.");
             }
-            value = operator === "*" ? value * right : value / right;
+            value = calculateDecimals(value, right, operator);
           }
           return value;
         };
@@ -2675,7 +2758,7 @@
         if (index !== tokens.length || !Number.isFinite(result)) {
           throw new Error("Invalid calculation.");
         }
-        return Number.parseFloat(result.toPrecision(12)).toString();
+        return result.toString();
       };
 
       const appendCalculatorValue = (value) => {

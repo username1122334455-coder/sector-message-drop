@@ -56,17 +56,23 @@ export async function processNextEvent(state, services) {
     if (!Array.isArray(queue)) throw new Error('Invalid queue response');
     if (!queue.length) return { processed: false, reason: 'idle' };
     const event = validateEvent(queue[0]);
-    state.pending = { event, folder: (state.currentFolder % 3) + 1, phase: 'queued', queuedAt: now() };
-    await save(state);
+    const queued = {
+      ...state,
+      pending: { event, folder: (state.currentFolder % 3) + 1, phase: 'queued', queuedAt: now() },
+    };
+    await save(queued);
+    Object.assign(state, queued);
   }
-  const pending = state.pending;
+  let pending = state.pending;
   // On a retry the publisher checks the Git event receipt before reading source
   // files, so committed work can recover even if a user has since changed them.
   if (pending.phase === 'queued') {
     const status = await ready(pending.folder);
     if (!status.ok) return { processed: false, reason: 'folder-not-ready', folder: pending.folder };
-    pending.phase = 'publishing';
-    await save(state);
+    const publishing = { ...pending, phase: 'publishing' };
+    await save({ ...state, pending: publishing });
+    state.pending = publishing;
+    pending = publishing;
   }
   const publication = validatePublication(await publish(pending), pending.event.event_id);
   pending.phase = 'published';
